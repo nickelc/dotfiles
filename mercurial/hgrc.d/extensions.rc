@@ -1,0 +1,30 @@
+[extensions]
+bookmarks =
+blackbox = !
+children =
+churn =
+color =
+convert =
+eol =
+extdiff =
+graphlog =
+hgk =
+highlight =
+histedit =
+inotify = !
+interhg =
+largefiles =
+patchbomb =
+mq =
+pager =
+progress =
+purge =
+rebase =
+record =
+relink =
+schemes =
+transplant =
+
+git   = ~/.hgext/hg-git/hggit
+svn   = ~/.hgext/hg-subversion/hgsubversion
+onsub = ~/.hgext/onsub/onsub.py

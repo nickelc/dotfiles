@@ -1,0 +1,5 @@
+[schemes]
+dev10 = ssh://nickel.c@dev10.indis.de/
+dev11 = ssh://hg@dev11.indis.de/
+indis = ssh://hg@dev11.indis.de/
+indis+http = http://dev11.indis.de/hg/

@@ -1,0 +1,9 @@
+[eol]
+native = LF
+only-consistent = False
+
+[patterns]
+**.py = native
+**.java = native
+**.xml = native
+**.properties = native

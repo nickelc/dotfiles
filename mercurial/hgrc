@@ -1,0 +1,29 @@
+[ui]
+editor = vim
+username = Constantin Nickel <nickel.c@indis.de>
+merge = meld
+ignore.other = ~/.hgignore
+
+[extdiff]
+cmd.meld = meld
+
+[diff]
+git = true
+
+[mq]
+secret = true
+
+[hooks]
+pretxncommit.crlf = python:hgext.eol.hook
+pretxnchangegroup.crlf = python:hgext.eol.hook
+
+[pager]
+pager = LESS='FSRX' less
+
+
+%include ~/.hgrc.d/alias.rc
+%include ~/.hgrc.d/color.rc
+%include ~/.hgrc.d/eol.rc
+%include ~/.hgrc.d/extensions.rc
+%include ~/.hgrc.d/merge-tools.rc
+%include ~/.hgrc.d/schemes.rc

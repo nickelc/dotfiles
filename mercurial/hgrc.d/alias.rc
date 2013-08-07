@@ -1,0 +1,13 @@
+[alias]
+qlog = log -r qbase:qtip
+nudge = push --rev .
+patch = import --no-commit
+shortlog = log --template '{rev} {node|short} | {date|isodatesec} | {author|user}: {desc|strip|firstline}\n'
+transplant = transplant --log
+, = glog -l15 --template '\033[0;33m{rev} \033[0;37m{desc|firstline|fill68} \033[1;30m({date|age} by {author|person})\033[0m \033[0;33m{tags}\033[0m \033[0;37m{branches}\033[37;40m\033[0m\n\n'
+
+dlog = log --style=/home/constantin/.hgstyles/cli-styles/map-cmdline.dlog
+nlog = log --style=/home/constantin/.hgstyles/cli-styles/map-cmdline.nlog
+slog = log --style=/home/constantin/.hgstyles/cli-styles/map-cmdline.slog
+sglog = glog --style=/home/constantin/.hgstyles/cli-styles/map-cmdline.sglog
+
