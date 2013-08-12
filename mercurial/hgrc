@@ -26,4 +26,5 @@ pager = LESS='FSRX' less
 %include ~/.hgrc.d/eol.rc
 %include ~/.hgrc.d/extensions.rc
 %include ~/.hgrc.d/merge-tools.rc
+%include ~/.hgrc.d/paths.rc
 %include ~/.hgrc.d/schemes.rc
