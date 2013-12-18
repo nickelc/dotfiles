@@ -1,0 +1,16 @@
+LogLevel QUIET
+
+Host supergonzo.com
+    User p7873695
+
+Host bitbucket.com bitbucket.org
+    User hg
+
+Host github.com
+    User git
+
+Host alarmpi
+    User root
+
+Host router
+    User root
