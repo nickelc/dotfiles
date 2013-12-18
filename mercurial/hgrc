@@ -2,7 +2,7 @@
 editor = vim
 username = Constantin Nickel <nickel.c@supergonzo.com>
 merge = meld
-ignore.other = ~/.hgignore
+#ignore.other = ~/.hgignore
 
 [extdiff]
 cmd.meld = meld
