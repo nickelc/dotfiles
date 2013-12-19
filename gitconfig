@@ -1,0 +1,5 @@
+[user]
+	name = Constantin Nickel
+	email = nickel.c@supergonzo.com
+[core]
+	pager = LESS='FSRX' less
