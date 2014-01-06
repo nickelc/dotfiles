@@ -20,6 +20,8 @@ pretxnchangegroup.crlf = python:hgext.eol.hook
 [pager]
 pager = LESS='FSRX' less
 
+[web]
+cacerts = /etc/ssl/certs/ca-certificates.crt
 
 %include ~/.hgrc.d/alias.rc
 %include ~/.hgrc.d/color.rc
