@@ -23,6 +23,7 @@ rebase =
 record =
 relink =
 schemes =
+shelve =
 transplant =
 
 git   = ~/.hgext/hg-git/hggit
