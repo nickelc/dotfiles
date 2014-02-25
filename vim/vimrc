@@ -28,3 +28,7 @@ set modelines=10
 
 let mapleader=","
 let g:mapleader=","
+
+" latexsuite: set output to pdf
+let g:Tex_DefaultTargetFormat="pdf"
+let g:Tex_MultipleCompileFormats="pdf, aux"
