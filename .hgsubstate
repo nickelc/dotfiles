@@ -1,5 +1,5 @@
-dd8733d21b965ad276bd09d07cb83c01a48241fd mercurial/hgext/hg-git
-4cdb0e95604f657fb49acca19600c0b048eb6795 mercurial/hgext/hg-subversion
+51b3b3b4927e876b8815c3f7242b56b189189b13 mercurial/hgext/hg-git
+a22d4972e01fd3478ac5b4f4fae810591ff0049d mercurial/hgext/hg-subversion
 30bdbd5f6173041fa3e8726195dc21f8fd6082ea mercurial/hgext/onsub
 c893e36e323df0c713093178b34b166d1b6143f4 vim/bundle/latex
 1270dceb1fe0ca35f8b292c7b41b45b42c5a0cc1 vim/pathogen
