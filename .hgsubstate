@@ -2,5 +2,5 @@
 9490a30529358456e47cf7c3e1f0322ecf93724e mercurial/hgext/hg-subversion
 30bdbd5f6173041fa3e8726195dc21f8fd6082ea mercurial/hgext/onsub
 40cec4652cbd4f6d2d55fa8ae77db5598386da97 vim/bundle/gnupg
-c893e36e323df0c713093178b34b166d1b6143f4 vim/bundle/latex
+82d9064e9e09347d8b47acb72f50e1154c55bbf7 vim/bundle/latex
 91e6378908721d20514bbe5d18d292a0a15faf0c vim/pathogen

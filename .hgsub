@@ -3,4 +3,4 @@ mercurial/hgext/hg-subversion = https://bitbucket.org/durin42/hgsubversion
 mercurial/hgext/onsub         = https://bitbucket.org/lantiq/onsub
 vim/pathogen     = [git]git://github.com/tpope/vim-pathogen.git
 vim/bundle/gnupg = [git]git://github.com/jamessan/vim-gnupg.git
-vim/bundle/latex = [git]ssh://git@bitbucket.org/nickelc/vim-latex.git
+vim/bundle/latex = [git]git://github.com/gerw/vim-latex-suite.git
