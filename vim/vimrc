@@ -32,3 +32,6 @@ let g:mapleader=","
 " latexsuite: set output to pdf
 let g:Tex_DefaultTargetFormat="pdf"
 let g:Tex_MultipleCompileFormats="pdf, aux"
+" Disable QuickFix window and goto error
+" let g:Tex_GoToError=0
+" let g:Tex_ShowErrorContext=0
