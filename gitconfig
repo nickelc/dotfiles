@@ -3,3 +3,5 @@
 	email = nickel.c@supergonzo.com
 [core]
 	pager = LESS='FSRX' less
+[color]
+	ui = auto
