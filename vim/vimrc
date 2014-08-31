@@ -35,3 +35,5 @@ let g:Tex_MultipleCompileFormats="pdf, aux"
 " Disable QuickFix window and goto error
 " let g:Tex_GoToError=0
 " let g:Tex_ShowErrorContext=0
+
+let g:GPGUsePipes=1
