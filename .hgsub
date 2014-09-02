@@ -4,3 +4,4 @@ mercurial/hgext/onsub         = https://bitbucket.org/lantiq/onsub
 vim/pathogen     = [git]git://github.com/tpope/vim-pathogen.git
 vim/bundle/gnupg = [git]git://github.com/jamessan/vim-gnupg.git
 vim/bundle/latex = [git]git://github.com/gerw/vim-latex-suite.git
+vim/bundle/lawrencium = [git]git://github.com/ludovicchabant/vim-lawrencium.git
