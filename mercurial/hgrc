@@ -13,10 +13,6 @@ git = true
 [mq]
 secret = true
 
-[hooks]
-pretxncommit.crlf = python:hgext.eol.hook
-pretxnchangegroup.crlf = python:hgext.eol.hook
-
 [pager]
 pager = LESS='FSRX' less
 

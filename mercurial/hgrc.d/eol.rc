@@ -1,3 +1,7 @@
+[hooks]
+pretxncommit.eol = python:hgext.eol.hook
+pretxnchangegroup.eol = python:hgext.eol.hook
+
 [eol]
 native = LF
 only-consistent = False
