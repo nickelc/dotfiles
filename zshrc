@@ -11,4 +11,5 @@ SAVEHIST=1000
 bindkey -v
 # End of lines configured by zsh-newuser-install
 
+alias t='todo.sh'
 alias yaourt='PAGER="less -FSRX" yaourt --color'
