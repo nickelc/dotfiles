@@ -12,4 +12,5 @@ bindkey -v
 # End of lines configured by zsh-newuser-install
 
 alias t='todo.sh'
+alias i='TODO_TYPE=ideas todo.sh'
 alias yaourt='PAGER="less -FSRX" yaourt --color'
