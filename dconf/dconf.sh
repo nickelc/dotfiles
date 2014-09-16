@@ -65,11 +65,11 @@ function _diff() {
 }
 
 COMMAND=$(echo $1 | grep '^[a-z]*$')
-PROFILE=$(echo $2 | grep '^[a-z]*$')
+CONFIG=$(echo $2 | grep '^[a-z]*$')
 
-[[ -f $SCRIPT_PATH/profiles/$PROFILE ]] && \
-            . $SCRIPT_PATH/profiles/$PROFILE \
-            || die "Profile \"$PROFILE\" not found."
+[[ -f $SCRIPT_PATH/config/$CONFIG ]] && \
+            . $SCRIPT_PATH/config/$CONFIG \
+            || die "Configuration \"$CONFIG\" not found."
 
 [[ -z "${!dconf_dirs[@]}" ]] && die "No dconf_dirs found."
 
