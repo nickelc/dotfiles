@@ -19,10 +19,10 @@ pager = LESS='FSRX' less
 [web]
 cacerts = /etc/ssl/certs/ca-certificates.crt
 
-%include ~/.hgrc.d/alias.rc
-%include ~/.hgrc.d/color.rc
-%include ~/.hgrc.d/eol.rc
-%include ~/.hgrc.d/extensions.rc
-%include ~/.hgrc.d/merge-tools.rc
-%include ~/.hgrc.d/paths.rc
-%include ~/.hgrc.d/schemes.rc
+%include ~/.mercurial/hgrc.d/alias.rc
+%include ~/.mercurial/hgrc.d/color.rc
+%include ~/.mercurial/hgrc.d/eol.rc
+%include ~/.mercurial/hgrc.d/extensions.rc
+%include ~/.mercurial/hgrc.d/merge-tools.rc
+%include ~/.mercurial/hgrc.d/paths.rc
+%include ~/.mercurial/hgrc.d/schemes.rc

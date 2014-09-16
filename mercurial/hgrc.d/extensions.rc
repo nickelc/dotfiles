@@ -26,6 +26,6 @@ schemes =
 shelve =
 transplant =
 
-git   = ~/.hgext/hg-git/hggit
-svn   = ~/.hgext/hg-subversion/hgsubversion
-onsub = ~/.hgext/onsub/onsub.py
+git   = ~/.mercurial/hgext/hg-git/hggit
+svn   = ~/.mercurial/hgext/hg-subversion/hgsubversion
+onsub = ~/.mercurial/hgext/onsub/onsub.py

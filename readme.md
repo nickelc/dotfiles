@@ -13,9 +13,8 @@ ln -s .dotfiles/gitconfig .gitconfig
 # mercurial #
 ```
 #!bash
-ln -s .dotfiles/mercurial/hgrc .hgrc
-ln -s .dotfiles/mercurial/hgrc.d .hgrc.d
-ln -s .dotfiles/mercurial/hgext .hgext
+ln -s .dotfiles/mercurial .mercurial
+ln -s .mercurial/hgrc .hgrc
 ```
 
 # todo.txt #
