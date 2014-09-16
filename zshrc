@@ -11,6 +11,10 @@ SAVEHIST=1000
 bindkey -v
 # End of lines configured by zsh-newuser-install
 
+# Aliases
+alias chmod='chmod -c'
+alias chown='chown -c'
+
 alias t='todo.sh'
 alias i='TODO_TYPE=ideas todo.sh'
 alias yaourt='PAGER="less -FSRX" yaourt --color'
