@@ -1,20 +1,7 @@
 # vim: ft=sh
 
-TERMINAL_DIR="/org/gnome/terminal/legacy/profiles:/"
-TERMINAL_FILE="terminal-profiles.dconf"
+declare -A dconf_dirs
 
-function terminal_load() {
-    _load $TERMINAL_DIR $TERMINAL_FILE
-}
-
-function terminal_save() {
-    _save $TERMINAL_DIR $TERMINAL_FILE
-}
-
-function terminal_diff() {
-    _diff $TERMINAL_DIR $TERMINAL_FILE
-}
-
-function terminal_dump() {
-    _dump $TERMINAL_DIR
-}
+dconf_dirs=(
+    ['/org/gnome/terminal/legacy/profiles:/']='terminal-profiles.dconf'
+)

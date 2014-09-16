@@ -7,39 +7,78 @@ function die() {
 }
 
 function _load() {
-    [ ! -f $SCRIPT_PATH/$2 ] && die "$2 does not exists."
-    echo "load $2 to $1"
-    cat $SCRIPT_PATH/$2 | dconf load $1
+    for dir in "${!dconf_dirs[@]}"; do
+        local file="${dconf_dirs["$dir"]}"
+        [ ! -f $SCRIPT_PATH/$file ] && continue
+
+        echo "load $file to $dir"
+        if [[ "${dir: -1}" == "/" ]]; then
+            cat $SCRIPT_PATH/$file | dconf load $dir
+        else
+            dconf write $dir "$(cat $SCRIPT_PATH/$file)"
+        fi
+    done
 }
 
 function _save() {
-    echo "save $1 to $2"
-    dconf dump $1 > $SCRIPT_PATH/$2
+    for dir in "${!dconf_dirs[@]}"; do
+        local file="${dconf_dirs["$dir"]}"
+        local cmd="read"
+
+        if [[ "${dir: -1}" == "/" ]]; then
+            cmd="dump"
+        fi
+
+        echo "save $dir to $file"
+        dconf $cmd $dir > $SCRIPT_PATH/$file
+    done
 }
 
 function _dump() {
-    dconf dump $1
+    for dir in "${!dconf_dirs[@]}"; do
+        local file="${dconf_dirs["$dir"]}"
+        local cmd="read"
+
+        if [[ "${dir: -1}" == "/" ]]; then
+            cmd="dump"
+        fi
+
+        dconf $cmd $dir
+    done
 }
 
 function _diff() {
-    if [ -f $SCRIPT_PATH/$2 ]; then
-        dconf dump $1 | diff -u $SCRIPT_PATH/$2 -
-    else
-        dconf dump $1 | diff -u /dev/null -
-    fi
+    for dir in "${!dconf_dirs[@]}"; do
+        local file="${dconf_dirs["$dir"]}"
+        local cmd="read"
+
+        if [[ "${dir: -1}" == "/" ]]; then
+            cmd="dump"
+        fi
+
+        if [ -f $SCRIPT_PATH/$file ]; then
+            dconf $cmd $dir | diff -u $SCRIPT_PATH/$file -
+        else
+            dconf $cmd $dir | diff -u /dev/null -
+        fi
+    done
 }
 
 COMMAND=$(echo $1 | grep '^[a-z]*$')
 PROFILE=$(echo $2 | grep '^[a-z]*$')
 
-[ -f $SCRIPT_PATH/profiles/$PROFILE ] && \
+[[ -f $SCRIPT_PATH/profiles/$PROFILE ]] && \
             . $SCRIPT_PATH/profiles/$PROFILE \
             || die "Profile \"$PROFILE\" not found."
 
-FUNC="${PROFILE}_${COMMAND}"
+[[ -z "${!dconf_dirs[@]}" ]] && die "No dconf_dirs found."
+
+FUNC="_${COMMAND}"
 
 declare -f -F $FUNC > /dev/null
 
-[ $? -eq 0 ] && $FUNC || die "Command \"$COMMAND\" not found in \"$PROFILE\"."
+[[ $? -eq 0 ]] || die "Command \"$COMMAND\" not found."
+
+$FUNC
 
 exit 0
