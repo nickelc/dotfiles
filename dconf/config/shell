@@ -1,0 +1,8 @@
+# vim: ft=sh
+
+declare -A dconf_dirs
+
+dconf_dirs=( \
+    ['/org/gnome/shell/enabled-extensions']='gnome-shell-extensions.dconf'
+    ['/org/gnome/shell/favorite-apps']='gnome-shell-favorite-apps.dconf'
+)
