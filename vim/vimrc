@@ -37,3 +37,5 @@ let g:Tex_MultipleCompileFormats="pdf, aux"
 " let g:Tex_ShowErrorContext=0
 
 let g:GPGUsePipes=1
+
+autocmd BufNewFile,BufRead *.md     set syntax=markdown
