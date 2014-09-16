@@ -5,6 +5,7 @@ autoload -Uz compinit
 compinit
 # End of lines added by compinstall
 # Lines configured by zsh-newuser-install
+setopt HIST_IGNORE_SPACE
 HISTSIZE=1000
 SAVEHIST=1000
 bindkey -v
