@@ -1,0 +1,17 @@
+[
+    {
+        "name": "shell/apps",
+        "key" : "/org/gnome/shell/favorite-apps",
+        "file": "gnome-shell-favorite-apps.dconf"
+    },
+    {
+        "name": "shell/extensions",
+        "key" : "/org/gnome/shell/enabled-extensions",
+        "file": "gnome-shell-extensions.dconf"
+    },
+    {
+        "name": "terminal/profiles",
+        "key" : "/org/gnome/terminal/legacy/profiles:/",
+        "file": "terminal-profiles.dconf"
+    }
+]

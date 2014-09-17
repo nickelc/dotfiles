@@ -1,84 +1,99 @@
 #!/usr/bin/bash
 
 SCRIPT_PATH=$(dirname $(readlink -f $0))
+CONFIG_FILE="$SCRIPT_PATH/config.json"
+
+jsawk="jsawk -j /usr/bin/js24"
 
 function die() {
     echo $1; exit 1
 }
 
+function config_filter() {
+    local filter="return this.name.match(/^${1//\//\\\/}/) ? this : null;"
+    $jsawk -i $CONFIG_FILE "$filter" | $jsawk -n "out(this.key + '|' + this.file)"
+}
+
 function _load() {
-    for dir in "${!dconf_dirs[@]}"; do
-        local file="${dconf_dirs["$dir"]}"
+    local configs=( $(config_filter $1) )
+
+    for config in "${configs[@]}"; do
+        local key="${config%%|*}"
+        local file="${config##*|}"
         [ ! -f $SCRIPT_PATH/$file ] && continue
 
         echo "load $file to $dir"
-        if [[ "${dir: -1}" == "/" ]]; then
-            cat $SCRIPT_PATH/$file | dconf load $dir
+        if [[ "${key: -1}" == "/" ]]; then
+            cat $SCRIPT_PATH/$file | dconf load $key
         else
-            dconf write $dir "$(cat $SCRIPT_PATH/$file)"
+            dconf write $key "$(cat $SCRIPT_PATH/$file)"
         fi
     done
 }
 
 function _save() {
-    for dir in "${!dconf_dirs[@]}"; do
-        local file="${dconf_dirs["$dir"]}"
+    local configs=( $(config_filter $1) )
+
+    for config in "${configs[@]}"; do
+        local key="${config%%|*}"
+        local file="${config##*|}"
         local cmd="read"
 
-        if [[ "${dir: -1}" == "/" ]]; then
+        if [[ "${key: -1}" == "/" ]]; then
             cmd="dump"
         fi
 
         echo "save $dir to $file"
-        dconf $cmd $dir > $SCRIPT_PATH/$file
+        dconf $cmd $key > $SCRIPT_PATH/$file
     done
 }
 
 function _dump() {
-    for dir in "${!dconf_dirs[@]}"; do
-        local file="${dconf_dirs["$dir"]}"
+    local configs=( $(config_filter $1) )
+
+    for config in "${configs[@]}"; do
+        local key="${config%%|*}"
+        local file="${config##*|}"
         local cmd="read"
 
-        if [[ "${dir: -1}" == "/" ]]; then
+        if [[ "${key: -1}" == "/" ]]; then
             cmd="dump"
         fi
 
-        dconf $cmd $dir
+        dconf $cmd $key
     done
 }
 
 function _diff() {
-    for dir in "${!dconf_dirs[@]}"; do
-        local file="${dconf_dirs["$dir"]}"
+    local configs=( $(config_filter $1) )
+
+    for config in "${configs[@]}"; do
+        local key="${config%%|*}"
+        local file="${config##*|}"
         local cmd="read"
 
-        if [[ "${dir: -1}" == "/" ]]; then
+        if [[ "${key: -1}" == "/" ]]; then
             cmd="dump"
         fi
 
-        if [ -f $SCRIPT_PATH/$file ]; then
-            dconf $cmd $dir | diff -u $SCRIPT_PATH/$file -
+        if [[ -f $SCRIPT_PATH/$file ]]; then
+            dconf $cmd $key | diff -u $SCRIPT_PATH/$file -
         else
-            dconf $cmd $dir | diff -u /dev/null -
+            dconf $cmd $key | diff -u /dev/null -
         fi
     done
 }
 
 COMMAND=$(echo $1 | grep '^[a-z]*$')
-CONFIG=$(echo $2 | grep '^[a-z]*$')
-
-[[ -f $SCRIPT_PATH/config/$CONFIG ]] && \
-            . $SCRIPT_PATH/config/$CONFIG \
-            || die "Configuration \"$CONFIG\" not found."
-
-[[ -z "${!dconf_dirs[@]}" ]] && die "No dconf_dirs found."
-
+FILTER=$(echo $2 | grep '^[a-z/]*$')
 FUNC="_${COMMAND}"
+
+[[ -f $CONFIG_FILE ]] || die "Configuration \"config.json\" not found."
 
 declare -f -F $FUNC > /dev/null
 
 [[ $? -eq 0 ]] || die "Command \"$COMMAND\" not found."
 
-$FUNC
+$FUNC "$FILTER"
 
 exit 0
