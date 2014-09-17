@@ -1,5 +1,12 @@
 #!/usr/bin/bash
 
+declare -A COLORS
+
+COLORS=(
+    ["red"]='\e[0;31m'
+    ["yellow"]='\e[0;33m'
+)
+
 SCRIPT_PATH=$(dirname $(readlink -f $0))
 CONFIG_FILE="$SCRIPT_PATH/config.json"
 
@@ -7,6 +14,13 @@ jsawk="jsawk -j /usr/bin/js24"
 
 function die() {
     echo $1; exit 1
+}
+
+function colored() {
+    local color="${2:-yellow}"
+    local nc='\e[0m'
+
+    echo -e "${COLORS["$color"]}$1${nc}"
 }
 
 function config_filter() {
@@ -22,7 +36,7 @@ function _load() {
         local file="${config##*|}"
         [ ! -f $SCRIPT_PATH/$file ] && continue
 
-        echo "load $file to $dir"
+        echo "load $(colored $file) to $(colored $key red)"
         if [[ "${key: -1}" == "/" ]]; then
             cat $SCRIPT_PATH/$file | dconf load $key
         else
@@ -43,7 +57,7 @@ function _save() {
             cmd="dump"
         fi
 
-        echo "save $dir to $file"
+        echo "save $(colored $key red) to $(colored $file)"
         dconf $cmd $key > $SCRIPT_PATH/$file
     done
 }
