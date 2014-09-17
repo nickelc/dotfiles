@@ -12,6 +12,9 @@ CONFIG_FILE="$SCRIPT_PATH/config.json"
 
 jsawk="jsawk -j /usr/bin/js24"
 
+jsawk_default_printer="out(this.key + '|' + this.file)"
+jsawk_name_printer='out(this.name)'
+
 function die() {
     echo $1; exit 1
 }
@@ -23,13 +26,18 @@ function colored() {
     echo -e "${COLORS["$color"]}$1${nc}"
 }
 
-function config_filter() {
+function filter_config() {
+    local printer="${2:-$jsawk_default_printer}"
     local filter="return this.name.match(/^${1//\//\\\/}/) ? this : null;"
-    $jsawk -i $CONFIG_FILE "$filter" | $jsawk -n "out(this.key + '|' + this.file)"
+    $jsawk -i $CONFIG_FILE "$filter" | $jsawk -n "$printer"
+}
+
+function _list() {
+    filter_config "$1" "$jsawk_name_printer"
 }
 
 function _load() {
-    local configs=( $(config_filter $1) )
+    local configs=( $(filter_config $1) )
 
     for config in "${configs[@]}"; do
         local key="${config%%|*}"
@@ -46,7 +54,7 @@ function _load() {
 }
 
 function _save() {
-    local configs=( $(config_filter $1) )
+    local configs=( $(filter_config $1) )
 
     for config in "${configs[@]}"; do
         local key="${config%%|*}"
@@ -63,7 +71,7 @@ function _save() {
 }
 
 function _dump() {
-    local configs=( $(config_filter $1) )
+    local configs=( $(filter_config $1) )
 
     for config in "${configs[@]}"; do
         local key="${config%%|*}"
@@ -79,7 +87,7 @@ function _dump() {
 }
 
 function _diff() {
-    local configs=( $(config_filter $1) )
+    local configs=( $(filter_config $1) )
 
     for config in "${configs[@]}"; do
         local key="${config%%|*}"
