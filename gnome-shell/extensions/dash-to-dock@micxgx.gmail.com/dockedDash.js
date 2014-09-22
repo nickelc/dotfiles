@@ -12,6 +12,7 @@ const Params = imports.misc.params;
 
 const Main = imports.ui.main;
 const Dash = imports.ui.dash;
+const MessageTray = imports.ui.messageTray;
 const Overview = imports.ui.overview;
 const Tweener = imports.ui.tweener;
 const ViewSelector = imports.ui.viewSelector;
@@ -190,6 +191,8 @@ const dockedDash = new Lang.Class({
         this._pressureSensed = false;
         this._pressureBarrier = null;
         this._barrier = null;
+        this._messageTrayShowing = false;
+        this._removeBarrierTimeoutId = 0;
 
         // Create a new dash object
         this.dash = new MyDash.myDash(this._settings);
@@ -247,7 +250,7 @@ const dockedDash = new Lang.Class({
             [
                 St.ThemeContext.get_for_stage (global.stage),
                 'changed',
-                Lang.bind(this, this._onThemeChanged)
+                Lang.bind(this, this._updateCustomTheme)
             ],
             [
                 Main.overview,
@@ -265,6 +268,21 @@ const dockedDash = new Lang.Class({
                 Main.overview.viewSelector._showAppsButton,
                 'notify::checked',
                 Lang.bind(this, this._syncShowAppsButtonToggled)
+            ],
+            [
+                Main.messageTray,
+                'showing',
+                Lang.bind(this, this._onMessageTrayShowing)
+            ],
+            [
+                Main.messageTray,
+                'hiding',
+                Lang.bind(this, this._onMessageTrayHiding)
+            ],
+            [
+                global.screen,
+                'in-fullscreen-changed',
+                Lang.bind(this, this._onFullscreenChanged)
             ]
         );
 
@@ -318,6 +336,12 @@ const dockedDash = new Lang.Class({
         Main.uiGroup.add_child(this.actor);
         Main.layoutManager._trackActor(this._slider, {trackFullscreen: true});
 
+        // The dash need to be above the top_window_group, otherwise it doesn't
+        // accept dnd of app icons when not in overiew mode, although the default
+        // behavior is to keep newly added chrome elements below the the
+        // top_window_group.
+        this.actor.raise(global.top_window_group);
+
         if ( this._settings.get_boolean('dock-fixed') )
           Main.layoutManager._trackActor(this.dash._box, {affectsStruts: true});
 
@@ -365,6 +389,10 @@ const dockedDash = new Lang.Class({
         // Destroy main clutter actor: this should be sufficient removing it and
         // destroying  all its children
         this.actor.destroy();
+
+        // Remove barrier timeout
+        if (this._removeBarrierTimeoutId > 0)
+            Mainloop.source_remove(this._removeBarrierTimeoutId);
 
         // Remove existing barrier
         this._removeBarrier();
@@ -584,10 +612,47 @@ const dockedDash = new Lang.Class({
     // handler for mouse pressure sensed
     _onPressureSensed: function() {
         this._pressureSensed = true;
-        // NOTE: We could have called this._hoverChanged() instead but hover processing not required.
-        if(this._settings.get_boolean('autohide') && this._autohideStatus){
-            this._show();
-        }
+        // Prevent dock from being shown accidentally by testing for mouse hover
+        this._hoverChanged();
+    },
+
+    _onMessageTrayShowing: function() {
+
+        // Temporary move the dash below the top panel so that it slide below it.
+        this.actor.lower(Main.layoutManager.panelBox);
+
+        // Remove other tweens that could mess with the state machine
+        Tweener.removeTweens(this.actor);
+        Tweener.addTween(this.actor, {
+              y: this._y0 - Main.messageTray.actor.height,
+              time: MessageTray.ANIMATION_TIME,
+              transition: 'easeOutQuad'
+            });
+        this._messageTrayShowing = true;
+        this._updateBarrier();
+    },
+
+    _onMessageTrayHiding: function() {
+
+        // Remove other tweens that could mess with the state machine
+        Tweener.removeTweens(this.actor);
+        Tweener.addTween(this.actor, {
+              y: this._y0,
+              time: MessageTray.ANIMATION_TIME,
+              transition: 'easeOutQuad',
+              onComplete: Lang.bind(this, function(){
+                  // Reset desired dash stack order (on top to accept dnd of app icons)
+                  this.actor.raise(global.top_window_group);
+                })
+            });
+
+        this._messageTrayShowing = false;
+        this._updateBarrier();
+    },
+
+    _onFullscreenChanged: function() {
+        if (!this._slider.visible)
+            this._updateBarrier();
     },
 
     // Remove pressure barrier
@@ -617,7 +682,7 @@ const dockedDash = new Lang.Class({
 
         // Create new barrier
         // Note: dash in fixed position doesn't use pressure barrier
-        if (this._canUsePressure && this._settings.get_boolean('autohide') && this._settings.get_boolean('require-pressure-to-show') && !this._settings.get_boolean('dock-fixed')) {
+        if (this._slider.visible && this._canUsePressure && this._settings.get_boolean('autohide') && this._settings.get_boolean('require-pressure-to-show') && !this._settings.get_boolean('dock-fixed') && !this._messageTrayShowing) {
             let x, direction;
             if (this._rtl) {
                 x = this._monitor.x + this._monitor.width;
@@ -730,7 +795,8 @@ const dockedDash = new Lang.Class({
             fraction = 0.95;
 
         this.actor.height = Math.round( fraction * availableHeight);
-        this.actor.y = this._monitor.y + unavailableTopSpace + Math.round( (1-fraction)/2 * availableHeight);
+        this._y0 = this._monitor.y + unavailableTopSpace + Math.round( (1-fraction)/2 * availableHeight);
+        this.actor.y = this._y0;
 
         if(extendHeight){
             this.dash._container.set_height(this.actor.height);
@@ -925,13 +991,6 @@ const dockedDash = new Lang.Class({
 
         function enable(){
 
-            // Sometimes Main.wm._workspaceSwitcherPopup is null when first loading the extension
-            if (Main.wm._workspaceSwitcherPopup == null)
-                Main.wm._workspaceSwitcherPopup = new WorkspaceSwitcherPopup.WorkspaceSwitcherPopup();
-                Main.wm._workspaceSwitcherPopup.connect('destroy', function() {
-                    Main.wm._workspaceSwitcherPopup = null;
-                });
-
             this._signalHandler.disconnectWithLabel(label);
 
             this._signalHandler.pushWithLabel(label,
@@ -958,7 +1017,7 @@ const dockedDash = new Lang.Class({
         function onScrollEvent(actor, event) {
 
             let activeWs = global.screen.get_active_workspace();
-            let direction = 0; // 0: do nothing; +1: up; -1:down.
+            let direction = null;
 
             // filter events occuring not near the screen border if required
             if(this._settings.get_boolean('scroll-switch-workspace-whole')==false) {
@@ -976,22 +1035,22 @@ const dockedDash = new Lang.Class({
 
             switch ( event.get_scroll_direction() ) {
             case Clutter.ScrollDirection.UP:
-                direction = 1;
+                direction = Meta.MotionDirection.UP;
                 break;
             case Clutter.ScrollDirection.DOWN:
-                direction = -1;
+                direction = Meta.MotionDirection.DOWN;
                 break;
             case Clutter.ScrollDirection.SMOOTH:
                 let [dx, dy] = event.get_scroll_delta();
                 if(dy < 0){
-                    direction = 1;
+                    direction = Meta.MotionDirection.UP;
                 } else if(dy > 0) {
-                    direction = -1;
+                    direction = Meta.MotionDirection.DOWN;
                 }
                 break;
             }
 
-            if(direction !==0 ){
+            if(direction !==null ){
 
                 // Prevent scroll events from triggering too many workspace switches
                 // by adding a deadtime between each scroll event.
@@ -1013,11 +1072,15 @@ const dockedDash = new Lang.Class({
 
                 let ws;
 
-                if (direction>0)
-                    ws = activeWs.get_neighbor(Meta.MotionDirection.UP)
-                else
-                    ws = activeWs.get_neighbor(Meta.MotionDirection.DOWN);
+                ws = activeWs.get_neighbor(direction)
 
+                if (Main.wm._workspaceSwitcherPopup == null)
+                    Main.wm._workspaceSwitcherPopup = new WorkspaceSwitcherPopup.WorkspaceSwitcherPopup();
+                    Main.wm._workspaceSwitcherPopup.connect('destroy', function() {
+                        Main.wm._workspaceSwitcherPopup = null;
+                    });
+
+                Main.wm._workspaceSwitcherPopup.display(direction, ws.index());
                 Main.wm.actionMoveWorkspace(ws);
 
                 return true;
@@ -1030,7 +1093,8 @@ const dockedDash = new Lang.Class({
     },
 
     _updateCustomTheme: function() {
-        if(this._settings.get_boolean('apply-custom-theme'))
+        // Apply customization to the theme but only if the default theme is used
+        if(Main.getThemeStylesheet() == null && this._settings.get_boolean('apply-custom-theme'))
             this.actor.add_style_class_name('dashtodock');
         else
            this.actor.remove_style_class_name('dashtodock');
