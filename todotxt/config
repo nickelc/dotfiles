@@ -70,7 +70,7 @@ export REPORT_FILE="$TODO_DIR/$TODO_TYPE-report.txt"
 # export COLOR_CONTEXT=$RED
 
 # === BEHAVIOR ===
-
+TODOTXT_DATE_ON_ADD=1
 ## customize list output
 #
 # TODOTXT_SORT_COMMAND will filter after line numbers are
