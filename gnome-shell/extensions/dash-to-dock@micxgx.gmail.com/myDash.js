@@ -341,6 +341,7 @@ const myDash = new Lang.Class({
                         this._showLabelTimeoutId = 0;
                         return GLib.SOURCE_REMOVE;
                     }));
+                GLib.Source.set_name_by_id(this._showLabelTimeoutId, '[gnome-shell] item.showLabel');
                 if (this._resetHoverTimeoutId > 0) {
                     Mainloop.source_remove(this._resetHoverTimeoutId);
                     this._resetHoverTimeoutId = 0;
@@ -358,6 +359,7 @@ const myDash = new Lang.Class({
                         this._resetHoverTimeoutId = 0;
                         return GLib.SOURCE_REMOVE;
                     }));
+                GLib.Source.set_name_by_id(this._resetHoverTimeoutId, '[gnome-shell] this._labelShowing');
             }
         }
     },
@@ -869,23 +871,27 @@ const myAppIcon = new Lang.Class({
             this.actor.remove_style_class_name('focused');
     },
 
-    _onActivate: function(event) {
+    activate: function(button) {
 
         if ( !this._settings.get_boolean('customize-click') ){
-            this.parent(event);
+            this.parent(button);
             return;
         }
 
-        let modifiers = event.get_state();
+        let event = Clutter.get_current_event();
+        let modifiers = event ? event.get_state() : 0;
+        let openNewWindow = modifiers & Clutter.ModifierType.CONTROL_MASK &&
+                            this.app.state == Shell.AppState.RUNNING ||
+                            button && button == 2;
         let focusedApp = tracker.focus_app;
 
-        if(this.app.state == Shell.AppState.RUNNING) {
+        if(button && button == 1 && this.app.state == Shell.AppState.RUNNING) {
 
             if(modifiers & Clutter.ModifierType.CONTROL_MASK){
                 // Keep default behaviour: launch new window
                 // By calling the parent method I make it compatible
                 // with other extensions tweaking ctrl + click
-                this.parent(event);
+                this.parent(button);
                 return;
 
             } else if (this._settings.get_boolean('minimize-shift') && modifiers & Clutter.ModifierType.SHIFT_MASK){
@@ -923,8 +929,10 @@ const myAppIcon = new Lang.Class({
                     this.app.activate();
             }
         } else {
-            // Just launch new app
-            this.emit('launching');
+         // Default behaviour
+         if (openNewWindow)
+            this.app.open_new_window(-1);
+         else
             this.app.activate();
         }
 

@@ -1,4 +1,10 @@
 /* -*- mode: js2 - indent-tabs-mode: nil - js2-basic-offset: 4 -*- */
+/*jshint multistr:true */
+/*jshint esnext:true */
+/*global imports: true */
+/*global global: true */
+/*global log: true */
+/*global logError: true */
 /**
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,8 +20,11 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **/
 
+'use strict';
+
 const Lang = imports.lang;
 const St = imports.gi.St;
+const GLib = imports.gi.GLib;
 const Gio = imports.gi.Gio;
 const Main = imports.ui.main;
 const Mainloop = imports.mainloop;
@@ -68,6 +77,19 @@ const DBusSessionManagerInhibitorIface = '<node>\
 </node>';
 const DBusSessionManagerInhibitorProxy = Gio.DBusProxy.makeProxyWrapper(DBusSessionManagerInhibitorIface);
 
+const DBusLoginManagerIface = '<node>\
+  <interface name="org.freedesktop.login1.Manager">\
+    <method name="Inhibit">\
+      <arg type="s" direction="in" />\
+      <arg type="s" direction="in" />\
+      <arg type="s" direction="in" />\
+      <arg type="s" direction="in" />\
+      <arg type="h" direction="out" />\
+    </method>\
+  </interface>\
+</node>';
+const DBusLoginManagerProxy = Gio.DBusProxy.makeProxyWrapper(DBusLoginManagerIface);
+
 const IndicatorName = "Caffeine";
 const DisabledIcon = 'my-caffeine-off-symbolic';
 const EnabledIcon = 'my-caffeine-on-symbolic';
@@ -96,6 +118,10 @@ const Caffeine = new Lang.Class({
         this._sessionManager = new DBusSessionManagerProxy(Gio.DBus.session,
                                                           'org.gnome.SessionManager',
                                                           '/org/gnome/SessionManager');
+        this._loginManager = new DBusLoginManagerProxy(Gio.DBus.system,
+                                                       'org.freedesktop.login1',
+                                                       '/org/freedesktop/login1');
+
         this._inhibitorAddedId = this._sessionManager.connectSignal('InhibitorAdded',
                                                                     Lang.bind(this, this._inhibitorAdded));
         this._inhibitorRemovedId = this._sessionManager.connectSignal('InhibitorRemoved',
@@ -118,6 +144,7 @@ const Caffeine = new Lang.Class({
         // who has requested the inhibition
         this._last_app = "";
         this._last_cookie = "";
+        this._handle_lid_fd = false;
         this._apps = [];
         this._cookies = [];
         this._objects = [];
@@ -154,10 +181,15 @@ const Caffeine = new Lang.Class({
     },
 
     toggleFullscreen: function() {
-        if (this.inFullscreen && this._apps.indexOf('fullscreen') == -1)
-            this.addInhibit('fullscreen');
-        if (!this.inFullscreen && this._apps.indexOf('fullscreen') != -1)
-            this.removeInhibit('fullscreen');
+        Mainloop.timeout_add_seconds(2, Lang.bind(this, function() {
+          if (this.inFullscreen && this._apps.indexOf('fullscreen') == -1) {
+              this.addInhibit('fullscreen');
+          }
+        }));
+
+        if (!this.inFullscreen && this._apps.indexOf('fullscreen') != -1) {
+              this.removeInhibit('fullscreen');
+        }
     },
 
     toggleState: function() {
@@ -181,9 +213,40 @@ const Caffeine = new Lang.Class({
         );
     },
 
+    blockHandleLid: function() {
+        if (this._handle_lid_fd)
+          return;
+
+        let inVariant = GLib.Variant.new('(ssss)',
+                                         ['handle-lid-switch',
+                                          IndicatorName,
+                                          'suspend is disabled',
+                                          'block']);
+        this._loginManager.call_with_unix_fd_list('Inhibit', inVariant, 0, -1, null, null,
+            Lang.bind(this, function(proxy, result) {
+                let fd = -1;
+                try {
+                    let [outVariant, fdList] = proxy.call_with_unix_fd_list_finish(result);
+                    fd = fdList.steal_fds()[0];
+                    this._handle_lid_fd = new Gio.UnixInputStream({ fd: fd });
+                } catch(e) {
+                    logError(e, "Error getting systemd inhibitor");
+                    this._handle_lid_fd = false;
+                }
+            })
+        );
+    },
+
     removeInhibit: function(app_id) {
-        let index = this._apps.indexOf(app_id)
+        let index = this._apps.indexOf(app_id);
         this._sessionManager.UninhibitRemote(this._cookies[index]);
+    },
+
+    unblockHandleLid: function() {
+      if (this._handle_lid_fd) {
+        this._handle_lid_fd.close(null);
+        this._handle_lid_fd = false;
+      }
     },
 
     _inhibitorAdded: function(proxy, sender, [object]) {
@@ -194,16 +257,17 @@ const Caffeine = new Lang.Class({
         inhibitor.GetAppIdRemote(Lang.bind(this, function(app_id) {
             if (app_id == this._last_app) {
                 if (this._last_app == 'user')
-                    this._settings.set_boolean(USER_ENABLED_KEY, true)
+                    this._settings.set_boolean(USER_ENABLED_KEY, true);
                 this._apps.push(this._last_app);
                 this._cookies.push(this._last_cookie);
                 this._objects.push(object);
+                this.blockHandleLid();
                 this._last_app = "";
                 this._last_cookie = "";
-                if (this._state == false) {
+                if (this._state === false) {
                     this._state = true;
                     this._icon.icon_name = EnabledIcon;
-                    if (this._settings.get_boolean(SHOW_NOTIFICATIONS_KEY))
+                    if (this._settings.get_boolean(SHOW_NOTIFICATIONS_KEY) && !this.inFullscreen)
                         Main.notify(_("Auto suspend and screensaver disabled"));
                 }
             }
@@ -214,14 +278,15 @@ const Caffeine = new Lang.Class({
         let index = this._objects.indexOf(object);
         if (index != -1) {
             if (this._apps[index] == 'user')
-                this._settings.set_boolean(USER_ENABLED_KEY, false)
+                this._settings.set_boolean(USER_ENABLED_KEY, false);
             // Remove app from list
             this._apps.splice(index, 1);
             this._cookies.splice(index, 1);
             this._objects.splice(index, 1);
-            if (this._apps.length == 0) {
+            if (this._apps.length === 0) {
                 this._state = false;
                 this._icon.icon_name = DisabledIcon;
+                this.unblockHandleLid();
                 if(this._settings.get_boolean(SHOW_NOTIFICATIONS_KEY))
                     Main.notify(_("Auto suspend and screensaver enabled"));
             }
@@ -237,8 +302,7 @@ const Caffeine = new Lang.Class({
                     this._mayInhibit(display, window, true);
                     return false;
                 }));
-            } else
-                log('Cannot find application for window');
+            }
             return;
         }
         let app_id = app.get_id();
@@ -262,6 +326,7 @@ const Caffeine = new Lang.Class({
         this._apps.map(Lang.bind(this, function(app_id) {
             this.removeInhibit(app_id);
         }));
+        this.unblockHandleLid();
         // disconnect from signals
         if (this._settings.get_boolean(FULLSCREEN_KEY))
             global.screen.disconnect(this._inFullscreenId);

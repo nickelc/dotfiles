@@ -6,9 +6,10 @@
   "original-author": "eon@patapon.info", 
   "shell-version": [
     "3.10", 
-    "3.12"
+    "3.12", 
+    "3.14"
   ], 
   "url": "http://github.com/eonpatapon/gnome-shell-extensions-mediaplayer", 
   "uuid": "mediaplayer@patapon.info", 
-  "version": 31
+  "version": 32
 }
