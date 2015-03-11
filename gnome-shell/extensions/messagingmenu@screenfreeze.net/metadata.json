@@ -6,9 +6,10 @@
   "settings-schema": "org.gnome.shell.extensions.messagingmenu", 
   "shell-version": [
     "3.10", 
-    "3.12"
+    "3.12", 
+    "3.14"
   ], 
   "url": "https://github.com/screenfreeze/messagingmenu.git", 
   "uuid": "messagingmenu@screenfreeze.net", 
-  "version": 9
+  "version": 10
 }
