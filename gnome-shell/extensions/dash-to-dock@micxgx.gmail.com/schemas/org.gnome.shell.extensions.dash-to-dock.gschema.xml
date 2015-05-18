@@ -31,12 +31,12 @@
       <description>Sets the delay after the mouse reaches the screen border before showing the dock.</description>
     </key>
     <key type="d" name="hide-delay">
-      <default>0.10</default>
+      <default>0.20</default>
       <summary>Show delay</summary>
       <description>Sets the delay after the mouse left the dock before hiding it.</description>
     </key>
     <key type="b" name="opaque-background">
-      <default>true</default>
+      <default>false</default>
       <summary>Dash background is opaque</summary>
       <description>Makes the background of the dash opaque improving readability when in autohide mode.</description>
     </key>
@@ -51,7 +51,7 @@
       <description>Enable or disable intellihide mode</description>
     </key>
     <key type="b" name="intellihide-perapp">
-      <default>false</default>
+      <default>true</default>
       <summary>Dock dodges only same app windows</summary>
       <description></description>
     </key>
@@ -66,7 +66,7 @@
       <description>Enable or disable requiring pressure to show the dash</description>
     </key>
     <key type="d" name="pressure-threshold">
-      <default>50</default>
+      <default>100</default>
       <summary>Pressure threshold</summary>
       <description>Sets how much pressure is needed to show the dash.</description>
     </key>
@@ -80,25 +80,15 @@
       <summary>Switch workspace by scrolling over the dock</summary>
       <description>Add the possibility to switch workspace by mouse scrolling over the dock.</description>
     </key>
-    <key type="b" name="scroll-switch-workspace-whole">
-      <default>false</default>
-      <summary>Whole dock is sensible to scroll events</summary>
-      <description>Whether thw whole dock when scrolled above is sensible to scroll events or only an 1px wide area close to the screen border.</description>
-    </key>
-    <key type="b" name="scroll-switch-workspace-one-at-a-time">
-      <default>true</default>
-      <summary>Switch worskpace one at a time</summary>
-      <description>Switch only one workspace on each scroll event</description>
-    </key>
-    <key type="i" name="scroll-switch-workspace-dead-time">
-      <default>250</default>
-      <summary>A deadtime in ms</summary>
-      <description>A deadtime between each worskapace switch triggere by mouse scroll</description>
-    </key>
     <key type="i" name="dash-max-icon-size">
       <default>48</default>
       <summary>Maximum dash icon size</summary>
       <description>Set the allowed maximum dash icon size. Allowed range: 16..64.</description>
+    </key>
+    <key type="b" name="icon-size-fixed">
+      <default>false</default>
+      <summary>Fixed icon size</summary>
+      <description>Keep the icon size fived by scrolling the dock.</description>
     </key>
     <key type="b" name="apply-custom-theme">
       <default>false</default>
@@ -136,7 +126,7 @@
       <description>Make the extension work properly when bolt extensions is enabled</description>
     </key>
     <key type="d" name="height-fraction">
-      <default>0.95</default>
+      <default>0.90</default>
       <summary>Dock max height (fraction of available space)</summary>
     </key>
     <key type="b" name="extend-height">

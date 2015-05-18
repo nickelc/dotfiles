@@ -1,3 +1,60 @@
+3.16.0
+======
+* updated translations (ca)
+
+3.15.92
+=======
+* classic: Update theme
+* update for mutter API changes
+* updated translations (bg, bs, da, fi, pa, ru, sr, sr@latin, tg)
+
+3.15.91
+=======
+* classic: Update theme
+* systemMonitor extension was removed, as the message tray where it
+  put its indicator no longer exists
+* window-list: Adjust for gnome-shell changes
+* updated translations (gl, it, kk, ko, lt, pl, sk, uk, zh_TW)
+
+3.15.90
+=======
+* classic: Visual refresh based on new shell theme
+* window-list: Adjust for gnome-shell changes
+* updated translations (an, el, eo, eu, fr, he, is, sv, tr)
+
+3.15.4
+======
+* window-list: Improve interaction with system modal dialogs
+* updated translations (cs, de, es, eu, fur, hu, id, nb, pt_BR, ru, sl, vi)
+
+3.15.3.1
+========
+* adjust to gnome-shell change
+
+3.15.3
+======
+* classic-mode: Add high-contrast theme variant, drop .desktop file
+* places-menu: Fix error when XDG user directories are not set up
+* window-list: Add option to show on all monitors
+* updated translations (eu, hu, kk, ro, tr)
+
+3.15.2
+======
+* removable-drive, user-theme, window-list: Update for gnome-shell changes
+* apps-menu: Fix some visual glitches
+* Fix classic mode style
+* updated translations (an, cs, he, vi)
+
+3.15.1
+======
+ * updated translations (es, nb)
+
+3.14.1
+======
+ * alternateTab: Fix dismissing popup with Escape
+ * some improvements to the window-list
+   (spacing in app buttons, no flash when closing windows with auto-grouping)
+ * updated translations (lv, it, pt, bg)
 
 3.14.0
 ======

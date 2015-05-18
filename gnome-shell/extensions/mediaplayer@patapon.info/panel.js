@@ -89,7 +89,9 @@ const MediaplayerStatusButton = new Lang.Class({
             stateText = stateText.replace(/%a/, player.trackArtist.getText())
                                  .replace(/%t/, player.trackTitle.getText())
                                  .replace(/%b/, player.trackAlbum.getText())
-                                 .replace(/&/, "&amp;");
+                                 .replace(/&/, "&amp;")
+                                 .replace(/</, "&lt;")
+                                 .replace(/>/, "&gt;");
             this._stateTextCache = stateText;
 
             // If You just set width it will add blank space. This makes sure the
@@ -122,24 +124,28 @@ const MediaplayerStatusButton = new Lang.Class({
             this._delegate.previous();
     },
 
-    // Override PanelMenu.Button._onButtonPress
-    _onButtonPress: function(actor, event) {
-        let button = event.get_button();
+    // Override PanelMenu.Button._onEvent
+    _onEvent: function(actor, event) {
 
+      if (this.menu && event.type() == Clutter.EventType.TOUCH_BEGIN) {
+        this.menu.toggle();
+      }
+      else if (event.type() == Clutter.EventType.BUTTON_PRESS) {
+        let button = event.get_button();
         if (button == 2)
             this._delegate.playPause();
         else {
-            if(this._delegate._players[Settings.DEFAULT_PLAYER_OWNER]) {
-                let player = this._delegate._players[Settings.DEFAULT_PLAYER_OWNER].player;
-                player._app.activate_full(-1, 0);
-                return;
-            }
-
-            if (!this.menu)
-                return;
-
+          if(this._delegate._players[Settings.DEFAULT_PLAYER_OWNER]) {
+            let player = this._delegate._players[Settings.DEFAULT_PLAYER_OWNER].player;
+            player._app.activate_full(-1, 0);
+          }
+          else if (this.menu) {
             this.menu.toggle();
+          }
         }
+      }
+
+      return Clutter.EVENT_PROPAGATE;
     },
 
     setState: function(player) {

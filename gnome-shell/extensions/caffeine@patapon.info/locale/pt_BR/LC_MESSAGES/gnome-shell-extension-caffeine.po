@@ -1,10 +1,15 @@
+# Brazilian Portuguese translation for GNOME Shell Extension Caffeine.
+# Copyright (C) 2014 Jean-Philippe Braun
+# This file is distributed under the same license as the gnome-shell-extesion-caffeine package.
+# Rafael Ferreira <rafael.f.f1@gmail.com>, 2014.
+#
 msgid ""
 msgstr ""
 "Project-Id-Version: gnome-shell-extension-caffeine\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2014-02-19 17:32-0300\n"
-"PO-Revision-Date: 2014-02-19 17:34-0300\n"
-"Last-Translator: Junior Polegato <linux@juniorpolegato.com.br>\n"
+"POT-Creation-Date: 2014-11-07 10:01+0100\n"
+"PO-Revision-Date: 2014-11-12 07:17-0300\n"
+"Last-Translator: Rafael Ferreira <rafael.f.f1@gmail.com>\n"
 "Language-Team: Brazilian Portuguese\n"
 "Language: pt_BR\n"
 "MIME-Version: 1.0\n"
@@ -14,16 +19,16 @@ msgstr ""
 "X-Poedit-Basepath: .\n"
 "Plural-Forms: nplurals=2; plural=(n>1);\n"
 "X-Poedit-SourceCharset: UTF-8\n"
-"X-Generator: Poedit 1.5.4\n"
+"X-Generator: Poedit 1.6.10\n"
 "X-Poedit-SearchPath-0: ../../..\n"
 
-#: ../../../extension.js:224
-msgid "Caffeine enabled"
-msgstr "Caffeine ativado"
+#: ../../../extension.js:271
+msgid "Auto suspend and screensaver disabled"
+msgstr "Suspensão e proteção de tela automáticas desativadas"
 
-#: ../../../extension.js:243
-msgid "Caffeine disabled"
-msgstr "Caffeine desativado"
+#: ../../../extension.js:291
+msgid "Auto suspend and screensaver enabled"
+msgstr "Suspensão e proteção de tela automáticas ativadas"
 
 #: ../../../prefs.js:45
 msgid "Show Caffeine in top panel"
@@ -52,3 +57,9 @@ msgstr "Criar nova regra"
 #: ../../../prefs.js:134
 msgid "Add"
 msgstr "Adicionar"
+
+#~ msgid "Caffeine enabled"
+#~ msgstr "Caffeine ativado"
+
+#~ msgid "Caffeine disabled"
+#~ msgstr "Caffeine desativado"
