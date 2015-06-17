@@ -230,12 +230,8 @@ const Settings = new Lang.Class({
 
         /* Behavior panel */
 
-        this._settings.bind('show-favorites',
-                            this._builder.get_object('show_running_switch'),
-                            'active',
-                            Gio.SettingsBindFlags.DEFAULT);
         this._settings.bind('show-running',
-                            this._builder.get_object('show_favorite_switch'),
+                            this._builder.get_object('show_running_switch'),
                             'active',
                             Gio.SettingsBindFlags.DEFAULT);
         this._settings.bind('show-apps-at-top',

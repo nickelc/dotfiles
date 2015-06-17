@@ -411,6 +411,7 @@ const myDashActor = new Lang.Class({
  * - Add scrollview
  *   Ensure actor is visible on keyfocus inseid the scrollview
  * - add 128px icon size, might be usefull for hidpi display
+ * - Sync minimization application target position.
  */
 
 const baseIconSizes = [ 16, 22, 24, 32, 48, 64, 96, 128 ];
@@ -493,6 +494,12 @@ const myDash = new Lang.Class({
                     this._maxHeight = this.actor.height;
                 }));
         }
+
+        // Update minimization animation target position on allocation of the
+        // container and on scrollview change.
+        this._box.connect('notify::allocation', Lang.bind(this, this._updateAppIconsGeometry));
+        let scrollViewAdjustment = this._isHorizontal?this._scrollView.hscroll.adjustment:this._scrollView.vscroll.adjustment;
+        scrollViewAdjustment.connect('notify::value', Lang.bind(this, this._updateAppIconsGeometry));
 
         this._workId = Main.initializeDeferredWork(this._box, Lang.bind(this, this._redisplay));
 
@@ -690,10 +697,12 @@ const myDash = new Lang.Class({
                         }));
 
         let item = new Dash.DashItemContainer();
+
         extendDashItemContainer(item, this._dtdSettings);
         item.setChild(appIcon.actor);
 
 
+        item.setChild(appIcon.actor);
         appIcon.actor.connect('notify::hover', Lang.bind(this, function() {
             if (appIcon.actor.hover){
                 this._ensureAppIconVisibilityTimeoutId = Mainloop.timeout_add(100, Lang.bind(this, function(){
@@ -736,6 +745,33 @@ const myDash = new Lang.Class({
         this._hookUpLabel(item, appIcon);
 
         return item;
+    },
+
+    // Return an array with the "proper" appIcons currently in the dash
+    _getAppIcons: function() {
+        // Only consider children which are "proper"
+        // icons (i.e. ignoring drag placeholders) and which are not
+        // animating out (which means they will be destroyed at the end of
+        // the animation)
+        let iconChildren = this._box.get_children().filter(function(actor) {
+            return actor.child &&
+                   actor.child._delegate &&
+                   actor.child._delegate.icon &&
+                   !actor.animatingOut;
+        });
+
+        let appIcons = iconChildren.map(function(actor){
+            return actor.child._delegate;
+        });
+
+      return appIcons;
+    },
+
+    _updateAppIconsGeometry: function() {
+        let appIcons = this._getAppIcons();
+        appIcons.forEach(function(icon){
+            icon.updateIconGeometry();
+        });
     },
 
     _itemMenuStateChanged: function(item, opened) {
@@ -909,15 +945,13 @@ const myDash = new Lang.Class({
         // Apps supposed to be in the dash
         let newApps = [];
 
-        if( this._dtdSettings.get_boolean('show-favorites') ) {
-            for (let id in favorites)
-                newApps.push(favorites[id]);
-        }
+        for (let id in favorites)
+            newApps.push(favorites[id]);
 
         if( this._dtdSettings.get_boolean('show-running') ) {
             for (let i = 0; i < running.length; i++) {
                 let app = running[i];
-                if (this._dtdSettings.get_boolean('show-favorites') && (app.get_id() in favorites) )
+                if (app.get_id() in favorites)
                     continue;
                 newApps.push(app);
             }
@@ -1027,6 +1061,9 @@ const myDash = new Lang.Class({
         // Workaround for https://bugzilla.gnome.org/show_bug.cgi?id=692744
         // Without it, StBoxLayout may use a stale size cache
         this._box.queue_relayout();
+
+        // This is required for icon reordering when the scrollview is used.
+        this._updateAppIconsGeometry();
     },
 
     setIconSize: function (max_size, doNotAnimate) {
@@ -1100,7 +1137,7 @@ const myDash = new Lang.Class({
         if (app == null || app.is_window_backed())
             return DND.DragMotionResult.NO_DROP;
 
-        if (!this._settings.is_writable('favorite-apps') || !this._dtdSettings.get_boolean('show-favorites'))
+        if (!this._settings.is_writable('favorite-apps'))
             return DND.DragMotionResult.NO_DROP;
 
         let favorites = AppFavorites.getAppFavorites().getFavorites();
@@ -1197,7 +1234,7 @@ const myDash = new Lang.Class({
             return false;
         }
 
-        if (!this._settings.is_writable('favorite-apps') || !this._dtdSettings.get_boolean('show-favorites'))
+        if (!this._settings.is_writable('favorite-apps'))
             return false;
 
         let id = app.get_id();
@@ -1251,6 +1288,7 @@ Signals.addSignalMethods(myDash.prototype);
  *   like the original .running one.
  * - add a .focused style to the focused app
  * - Customize click actions.
+ * - Update minimization animation target
  *
  */
 
@@ -1289,7 +1327,7 @@ const myAppIcon = new Lang.Class({
 
         this._stateChangedId = this.app.connect('windows-changed',
                                                 Lang.bind(this,
-                                                          this._updateRunningStyle));
+                                                          this.onWindowsChanged));
         this._focuseAppChangeId = tracker.connect('notify::focus-app',
                                                 Lang.bind(this,
                                                           this._onFocusAppChanged));
@@ -1303,6 +1341,28 @@ const myAppIcon = new Lang.Class({
         // stateChangedId is already handled by parent)
         if(this._focusAppId>0)
             tracker.disconnect(this._focusAppId);
+    },
+
+    onWindowsChanged: function() {
+
+      this._updateRunningStyle();
+      this.updateIconGeometry();
+
+    },
+
+    // Update taraget for minimization animation
+    updateIconGeometry: function() {
+
+        let rect = new Meta.Rectangle();
+
+        [rect.x, rect.y] = this.actor.get_transformed_position();
+        [rect.width, rect.height] = this.actor.get_transformed_size();
+
+        let windows = this.app.get_windows();
+        windows.forEach(function(w) {
+            w.set_icon_geometry(rect);
+        });
+
     },
 
     _updateRunningStyle: function() {

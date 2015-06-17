@@ -530,10 +530,6 @@ const dockedDash = new Lang.Class({
             this.dash.setIconSize(this._settings.get_int('dash-max-icon-size'));
         }));
 
-        this._settings.connect('changed::show-favorites', Lang.bind(this, function(){
-            this.dash.resetAppIcons();
-        }));
-
         this._settings.connect('changed::show-running', Lang.bind(this, function(){
             this.dash.resetAppIcons();
         }));
@@ -869,7 +865,7 @@ const dockedDash = new Lang.Class({
 
         // In case the mouse move away from the dock area before hovering it, in such case the leave event
         // would never be triggered and the dock would stay visible forever.
-        let triggerTimeoutId =  Mainloop.timeout_add(this._settings.get_double('animation-time')*1000,
+        let triggerTimeoutId =  Mainloop.timeout_add(250,
                                                  Lang.bind(this, function() {
                                                                       triggerTimeoutId = 0;
                                                                       this._hoverChanged();
