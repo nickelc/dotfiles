@@ -1,1 +1,1 @@
-['empathy.desktop', 'nautilus.desktop', 'gnome-terminal.desktop', 'geany.desktop', 'firefox.desktop', 'netbeans.desktop']
+['org.gnome.Nautilus.desktop', 'org.gnome.Terminal.desktop', 'geany.desktop', 'firefox.desktop']
