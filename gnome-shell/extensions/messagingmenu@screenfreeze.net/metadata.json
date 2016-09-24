@@ -7,9 +7,12 @@
   "shell-version": [
     "3.10", 
     "3.12", 
-    "3.14"
+    "3.14", 
+    "3.16", 
+    "3.18", 
+    "3.20"
   ], 
   "url": "https://github.com/screenfreeze/messagingmenu.git", 
   "uuid": "messagingmenu@screenfreeze.net", 
-  "version": 10
+  "version": 13
 }

@@ -7,6 +7,8 @@
     caret-size: 2px;
     selected-color: black;
     padding: 3px;
+    background-color: rgba(0, 0, 0, 0);
+    border: 0px;
 }
 
 .translator-source-text-box {
@@ -40,12 +42,12 @@
 }
 
 .tranlator-top-bar-button {
-    font-size: 14px;
+    font-size: 25px;
     font-weight: bold;
 }
 
 .tranlator-top-bar-button-reactive {
-    font-size: 14px;
+    font-size: 25px;
     font-weight: bold;
 }
 
@@ -60,7 +62,7 @@
 .tranlator-top-bar-go-button {
     padding-left: 5px;
     padding-right: 5px;
-    font-size: 14px;
+    font-size: 20px;
     font-weight: bold;
     border: 1px solid rgba(255, 255, 255, 0.5);
     background-color: rgba(64, 64, 200, 1);

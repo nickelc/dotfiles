@@ -30,7 +30,6 @@ const Lib = Me.imports.lib;
 let gsettings;
 let settings;
 let settings_indicator;
-let vbox_indicator;
 
 function init() {
     Lib.initTranslations(Me);
@@ -38,18 +37,38 @@ function init() {
     settings = {
         indicator_position: {
             type: "e",
-            label: _("Position in the top panel"),
-            help: _("Restart the shell to apply this setting."),
+            label: _("Indicator position"),
             list: [
                 { nick: "center", name: _("Center"), id: 0 },
                 { nick: "right", name: _("Right"), id: 1 },
-                { nick: "volume-menu", name: _("Volume menu integration"), id: 2 }
+                { nick: "volume-menu", name: _("System menu"), id: 2 }
             ]
+        },
+        status_type: {
+            type: "e",
+            label: _("Indicator appearance"),
+            list: [
+                { nick: "icon", name: _("Symbolic icon"), id: 0 },
+                { nick: "cover", name: _("Current album cover"), id: 1 }
+            ]
+        },
+        status_text: {
+            type: "s",
+            label: _("Indicator status text"),
+            help: _("{trackArtist}: Artist, {trackAlbum}: Album, {trackTitle}: Title. Pango markup supported.")
+        },
+        status_size: {
+            type: "r",
+            label: _("Indicator status text width"),
+            help: _("The the maximum width before the status text gets an ellipsis. Default is 300px."),
+            min: 100,
+            max: 900,
+            step: 5,
+            default: 300
         },
         rundefault: {
             type: "b",
             label: _("Allow to start the default media player"),
-            help: _("Runs the default mediaplayer by clicking on the indicator or from the menu")
         },
         volume: {
             type: "b",
@@ -67,39 +86,6 @@ function init() {
             type: "b",
             label: _("Display song rating"),
             help: _("Display the currently playing song's rating on a 0 to 5 scale")
-        },
-        coversize: {
-            type: "r",
-            label: _("Album cover size"),
-            help: _("The size of the cover displayed in the menu. Default is 80px width."),
-            min: 50,
-            max: 110,
-            step: 5,
-            default: 80
-        }
-    };
-    settings_indicator = {
-        status_type: {
-            type: "e",
-            label: _("Appearance"),
-            list: [
-                { nick: "icon", name: _("Symbolic icon"), id: 0 },
-                { nick: "cover", name: _("Current album cover"), id: 1 }
-            ]
-        },
-        status_text: {
-            type: "s",
-            label: _("Status text"),
-            help: _("%a: Artist, %b: Album, %t: Title. Pango markup supported.")
-        },
-        status_size: {
-            type: "r",
-            label: _("Status text width"),
-            help: _("The the maximum width before the status text gets an ellipsis. Default is 300px."),
-            min: 100,
-            max: 900,
-            step: 5,
-            default: 300
         }
     };
 }
@@ -109,27 +95,15 @@ function buildPrefsWidget() {
                              border_width: 10});
     let vbox = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL,
                             margin: 20, margin_top: 10 });
-    vbox_indicator = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL,
-                                  margin_left: 30, margin_bottom: 10});
     let hbox;
-
-    for (let setting_indicator in settings_indicator) {
-        hbox = buildHbox(settings_indicator, setting_indicator);
-        vbox_indicator.add(hbox);
-    }
 
     for (let setting in settings) {
         hbox = buildHbox(settings, setting);
         vbox.add(hbox);
-        if (setting == "indicator_position")
-            vbox.add(vbox_indicator);
     }
 
     frame.add(vbox);
     frame.show_all();
-
-    if (gsettings.get_enum("indicator-position") == 2)
-        vbox_indicator.hide();
 
     return frame;
 }
@@ -183,13 +157,6 @@ function createEnumSetting(settings, setting) {
 
         let id = model.get_value(iter, 0);
         gsettings.set_enum(setting.replace('_', '-'), id);
-
-        if (setting == "indicator_position") {
-            if (gsettings.get_enum("indicator-position") == 2)
-                vbox_indicator.hide();
-            else
-                vbox_indicator.show();
-        }
     });
 
     if (settings[setting].help) {

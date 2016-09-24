@@ -1,4 +1,7 @@
 /* -*- mode: js2; js2-basic-offset: 4; indent-tabs-mode: nil -*- */
+/* jshint esnext: true */
+/* jshint -W097 */
+/* global imports: false */
 /**
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -51,3 +54,27 @@ function initTranslations(extension) {
         Gettext.bindtextdomain('gnome-shell-extensions-mediaplayer', extension.metadata.locale);
     }
 }
+
+let compileTemplate = function(template, playerState) {
+  return template.replace(/{(\w+)\|?([^}]*)}/g, function(match, fieldName, appendText) {
+    let text = "";
+    if (playerState[fieldName]) {
+      text = playerState[fieldName].toString()
+      .replace(/&/, "&amp;")
+      .replace(/</, "&lt;")
+      .replace(/>/, "&gt;") + appendText;
+    }
+    return text;
+  });
+};
+
+let _extends = function(object1, object2) {
+  Object.getOwnPropertyNames(object2).forEach(function(name, index) {
+    let desc = Object.getOwnPropertyDescriptor(object2, name);
+    if (! desc.writable)
+      Object.defineProperty(object1.prototype, name, desc);
+    else {
+      object1.prototype[name] = object2[name];
+    }
+  });
+};

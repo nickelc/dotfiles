@@ -1,5 +1,6 @@
 /* -*- mode: js2; js2-basic-offset: 4; indent-tabs-mode: nil -*- */
 /* jshint esnext: true */
+/* jshint -W097 */
 /* global imports: false */
 /**
     This program is free software: you can redistribute it and/or modify
@@ -19,6 +20,7 @@
 'use strict';
 
 const Lang = imports.lang;
+const Gio = imports.gi.Gio;
 const Clutter = imports.gi.Clutter;
 const Pango = imports.gi.Pango;
 const St = imports.gi.St;
@@ -27,144 +29,213 @@ const GLib = imports.gi.GLib;
 
 const Me = imports.misc.extensionUtils.getCurrentExtension();
 const Settings = Me.imports.settings;
+const Lib = Me.imports.lib;
 
+const IndicatorMixin = {
 
-const MediaplayerStatusButton = new Lang.Class({
-    Name: 'MediaplayerStatusButton',
-    Extends: PanelMenu.Button,
+  set manager(manager) {
+    this._manager = manager;
+    this.manager.connect('player-active-update', Lang.bind(this, this._commonOnActivePlayerUpdate));
+    this.manager.connect('player-active-remove', Lang.bind(this, this._commonOnActivePlayerRemove));
+  },
 
-    _init: function() {
-        this.parent(0.0, "mediaplayer");
+  get manager() {
+    return this._manager;
+  },
 
-        this._coverPath = "";
-        this._coverSize = 22;
-        this._state = "";
-
-        this._box = new St.BoxLayout();
-
-        this._icon = new St.Icon({icon_name: 'audio-x-generic-symbolic',
-                                  style_class: 'system-status-icon indicator-icon'});
-        this._bin = new St.Bin({child: this._icon});
-
-        this._stateText = new St.Label();
-        this._stateText.clutter_text.ellipsize = Pango.EllipsizeMode.END;
-        this._stateTextBin = new St.Bin({child: this._stateText,
-                                         y_align: St.Align.MIDDLE});
-
-        this._stateIcon = new St.Icon({icon_name: 'system-run-symbolic',
-                                       style_class: 'status-icon'});
-        this._stateIconBin = new St.Bin({child: this._stateIcon,
-                                         y_align: St.Align.END});
-
-        this._box.add(this._bin);
-        this._box.add(this._stateTextBin);
-        this._box.add(this._stateIconBin);
-        this.actor.add_actor(this._box);
-        this.actor.add_style_class_name('panel-status-button');
-        this.actor.connect('scroll-event', Lang.bind(this, this._onScrollEvent));
-    },
-
-    _showCover: function(player) {
-        if (Settings.gsettings.get_enum(Settings.MEDIAPLAYER_STATUS_TYPE_KEY) == Settings.IndicatorStatusType.COVER &&
-                this._coverPath != player.trackCoverPath) {
-            this._coverPath = player.trackCoverPath;
-            // Change cover
-            if (this._coverPath && GLib.file_test(this._coverPath, GLib.FileTest.EXISTS)) {
-                let cover = new St.Bin();
-                let coverTexture = new Clutter.Texture({filter_quality: 2, filename: this._coverPath});
-                let [coverWidth, coverHeight] = coverTexture.get_base_size();
-                cover.height = this._coverSize;
-                cover.width = this._coverSize;
-                cover.set_child(coverTexture);
-                this._bin.set_child(cover);
-            }
-            else
-                this._bin.set_child(this._icon);
-        }
-    },
-
-    _updateStateText: function(player) {
-        if (player && player.trackArtist) {
-            let stateText = Settings.gsettings.get_string(Settings.MEDIAPLAYER_STATUS_TEXT_KEY);
-            stateText = stateText.replace(/%a/, player.trackArtist.getText())
-                                 .replace(/%t/, player.trackTitle.getText())
-                                 .replace(/%b/, player.trackAlbum.getText())
-                                 .replace(/&/, "&amp;");
-            this._stateTextCache = stateText;
-
-            // If You just set width it will add blank space. This makes sure the
-            // panel uses the minimum amount of space.
-            let prefWidth = Settings.gsettings.get_int(Settings.MEDIAPLAYER_STATUS_SIZE_KEY);
-            this._stateText.clutter_text.set_width(-1);
-            let statusTextWidth = this._stateText.clutter_text.get_width();
-            if (statusTextWidth > prefWidth) {
-                this._stateText.clutter_text.set_width(prefWidth);
-            }
-            else {
-                this._stateText.clutter_text.set_width(-1);
-            }
-        }
-
-        this._stateText.clutter_text.set_markup(this._stateTextCache);
-    },
-
-    _clearStateText: function() {
-        this._stateText.text = "";
-        this._stateText.clutter_text.set_width(-1);
-    },
-
-    _onScrollEvent: function(actor, event) {
-        let direction = event.get_scroll_direction();
-
-        if (direction == Clutter.ScrollDirection.DOWN)
-            this._delegate.next();
-        else if (direction == Clutter.ScrollDirection.UP)
-            this._delegate.previous();
-    },
-
-    // Override PanelMenu.Button._onButtonPress
-    _onButtonPress: function(actor, event) {
-        let button = event.get_button();
-
-        if (button == 2)
-            this._delegate.playPause();
-        else {
-            if(this._delegate._players[Settings.DEFAULT_PLAYER_OWNER]) {
-                let player = this._delegate._players[Settings.DEFAULT_PLAYER_OWNER].player;
-                player._app.activate_full(-1, 0);
-                return;
-            }
-
-            if (!this.menu)
-                return;
-
-            this.menu.toggle();
-        }
-    },
-
-    setState: function(player) {
-        if (player) {
-            this._state = player._status;
-            if (this._state == Settings.Status.PLAY) {
-                this._stateIcon.icon_name = "media-playback-start-symbolic";
-                this._updateStateText(player);
-                this._showCover(player);
-            }
-            else if (this._state == Settings.Status.PAUSE) {
-                this._stateIcon.icon_name = "media-playback-pause-symbolic";
-                this._updateStateText(player);
-                this._showCover(player);
-            }
-            else if (!this.state || this._state == Settings.Status.STOP) {
-                this._stateIcon.icon_name = "media-playback-stop-symbolic";
-                this._clearStateText();
-                this._showCover(false);
-            }
-        }
-        else {
-            this._stateIcon.icon_name = "system-run-symbolic";
-            this._clearStateText();
-            this._showCover(false);
-        }
+  _onScrollEvent: function(actor, event) {
+    switch (event.get_scroll_direction()) {
+      case Clutter.ScrollDirection.UP:
+        this.manager.activePlayer.previous();
+      break;
+      case Clutter.ScrollDirection.DOWN:
+        this.manager.activePlayer.next();
+      break;
     }
+  },
+
+  _onButtonEvent: function(actor, event) {
+    if (event.type() == Clutter.EventType.BUTTON_PRESS) {
+      let button = event.get_button();
+      if (button == 2 && this.manager.activePlayer) {
+        this.manager.activePlayer.playPause();
+        return Clutter.EVENT_STOP;
+      }
+    }
+    return Clutter.EVENT_PROPAGATE;
+  },
+
+  // method binded to classes below
+  _commonOnActivePlayerUpdate: function(manager, state) {
+    if (state.status) {
+      if (state.status == Settings.Status.PLAY) {
+        this._secondaryIndicator.icon_name = "media-playback-start-symbolic";
+      }
+      else if (state.status == Settings.Status.PAUSE) {
+        this._secondaryIndicator.icon_name = "media-playback-pause-symbolic";
+      }
+      else if (state.status == Settings.Status.STOP) {
+        this._secondaryIndicator.icon_name = "media-playback-stop-symbolic";
+      }
+      this._secondaryIndicator.show();
+      this.indicators.show();
+    }
+
+    let stateTemplate = Settings.gsettings.get_string(Settings.MEDIAPLAYER_STATUS_TEXT_KEY);
+    if(stateTemplate.length === 0 || state.status == Settings.Status.STOP) {
+      this._thirdIndicator.hide();
+    } else {
+      this._thirdIndicator.show();
+    }
+
+    if (state.trackTitle || state.trackArtist || state.trackAlbum || state.trackNumber) {
+      let stateText = Lib.compileTemplate(stateTemplate, state);
+      this._thirdIndicator.clutter_text.set_markup(stateText);
+
+      // If You just set width it will add blank space. This makes sure the
+      // panel uses the minimum amount of space.
+      let prefWidth = Settings.gsettings.get_int(Settings.MEDIAPLAYER_STATUS_SIZE_KEY);
+      this._thirdIndicator.clutter_text.set_width(-1);
+      let statusTextWidth = this._thirdIndicator.clutter_text.get_width();
+      if (statusTextWidth > prefWidth) {
+        this._thirdIndicator.clutter_text.set_width(prefWidth);
+      }
+      else {
+        this._thirdIndicator.clutter_text.set_width(-1);
+      }
+    }
+
+    if (state.trackCoverPath !== null) {
+      if (state.trackCoverPath &&
+          Settings.gsettings.get_enum(Settings.MEDIAPLAYER_STATUS_TYPE_KEY) == Settings.IndicatorStatusType.COVER) {
+        this._primaryIndicator.gicon = new Gio.FileIcon({
+          file: Gio.File.new_for_path(state.trackCoverPath)
+        });
+        this._primaryIndicator.icon_size = 22;
+      }
+      else {
+        this._primaryIndicator.icon_name = 'audio-x-generic-symbolic';
+        this._primaryIndicator.icon_size = 16;
+      }
+    }
+
+    try {
+      this._onActivePlayerUpdate(manager, state);
+    }
+    catch (err) {}
+
+  },
+
+  _commonOnActivePlayerRemove: function(manager) {
+    this._clearStateText();
+    if (Settings.gsettings.get_boolean(Settings.MEDIAPLAYER_RUN_DEFAULT)) {
+      this._thirdIndicator.hide();
+      this._secondaryIndicator.hide();
+      this.indicators.show();
+    }
+    else {
+      this.indicators.hide();
+    }
+
+    try {
+      this._onActivePlayerRemove(manager);
+    }
+    catch (err) {}
+  },
+
+  _clearStateText: function() {
+    this._thirdIndicator.text = "";
+    this._thirdIndicator.clutter_text.set_width(-1);
+  }
+};
+
+const PanelIndicator = new Lang.Class({
+  Name: 'PanelIndicator',
+  Extends: PanelMenu.Button,
+
+  _init: function() {
+    this.parent(0.0, "mediaplayer");
+
+    this._manager = null;
+
+    this.menu.actor.add_style_class_name('mediaplayer-menu');
+
+    this.indicators = new St.BoxLayout({vertical: false, style_class: 'indicators'});
+
+    this._primaryIndicator = new St.Icon({icon_name: 'audio-x-generic-symbolic',
+                                          style_class: 'system-status-icon indicator'});
+    this._secondaryIndicator = new St.Icon({icon_name: 'media-playback-stop-symbolic',
+                                            style_class: 'secondary-indicator'});
+    this._secondaryIndicator.hide();
+    this._thirdIndicator = new St.Label({style_class: 'system-status-icon third-indicator'});
+    this._thirdIndicator.clutter_text.ellipsize = Pango.EllipsizeMode.END;
+    this._thirdIndicatorBin = new St.Bin({child: this._thirdIndicator,
+                                          y_align: St.Align.MIDDLE});
+    this._thirdIndicator.hide();
+
+    this.indicators.add(this._primaryIndicator);
+    this.indicators.add(this._secondaryIndicator);
+    this.indicators.add(this._thirdIndicatorBin);
+
+    this.actor.add_actor(this.indicators);
+    this.actor.add_style_class_name('panel-status-button');
+    this.actor.connect('scroll-event', Lang.bind(this, this._onScrollEvent));
+  },
+
+  // Override PanelMenu.Button._onEvent
+  _onEvent: function(actor, event) {
+    if (this._onButtonEvent(actor, event) == Clutter.EVENT_PROPAGATE)
+      this.parent(actor, event);
+  }
 });
+Lib._extends(PanelIndicator, IndicatorMixin);
+
+const AggregateMenuIndicator = new Lang.Class({
+  Name: 'AggregateMenuIndicator',
+  Extends: PanelMenu.SystemIndicator,
+
+  _init: function() {
+    this.parent();
+
+    this._manager = null;
+
+    this._primaryIndicator = this._addIndicator();
+    this._primaryIndicator.icon_name = 'audio-x-generic-symbolic';
+    this._secondaryIndicator = this._addIndicator();
+    this._secondaryIndicator.icon_name = 'media-playback-stop-symbolic';
+    this._secondaryIndicator.style_class = 'secondary-indicator';
+    this._secondaryIndicator.hide();
+    this._thirdIndicator = new St.Label({style_class: 'system-status-icon third-indicator'});
+    this._thirdIndicator.clutter_text.ellipsize = Pango.EllipsizeMode.END;
+    this._thirdIndicator.hide();
+    this._thirdIndicatorBin = new St.Bin({child: this._thirdIndicator,
+                                     y_align: St.Align.MIDDLE});
+    this.indicators.add_actor(this._thirdIndicatorBin);
+    this.indicators.connect('scroll-event', Lang.bind(this, this._onScrollEvent));
+    this.indicators.connect('button-press-event', Lang.bind(this, this._onButtonEvent));
+    this.indicators.style_class = 'indicators';
+
+    this.indicators.hide();
+  },
+
+  _onActivePlayerUpdate: function(manager, state) {
+    if (state.status && state.status === Settings.Status.STOP) {
+      this.indicators.hide();
+    }
+    else if (state.status) {
+      this.indicators.show();
+    }
+
+    if (this._secondaryIndicator.visible) {
+      this._primaryIndicator.add_style_class_name('indicator');
+    }
+    else {
+      this._primaryIndicator.remove_style_class_name('indicator');
+    }
+  },
+
+  _onActivePlayerRemove: function(manager, state) {
+    this.indicators.hide();
+  }
+});
+Lib._extends(AggregateMenuIndicator, IndicatorMixin);

@@ -1,14 +1,15 @@
 const St = imports.gi.St;
+const Clutter = imports.gi.Clutter;
 const Lang = imports.lang;
 
 const Extension = imports.misc.extensionUtils.get_text_translator_extension();
 const TranslationProviderBase = Extension.imports.translation_provider_base;
 const Utils = Extension.imports.utils;
 
+const GLib = imports.gi.GLib;
+const Gio = imports.gi.Gio;
+
 const NAME = 'Google.Translate';
-const URL =
-    'https://translate.google.com/translate_a/t?' +
-    'client=j&ie=UTF-8&oe=UTF-8&sl=%s&tl=%s&text=%s';
 const LIMIT = 1400;
 const MAX_QUERIES = 3;
 
@@ -21,8 +22,11 @@ const DictionaryEntry = new Lang.Class({
         this.word = word;
         this.reverse_translations = reverse_translations || [];
 
-        this.actor = new St.Table({
-            homogeneous: false
+        this._grid_layout = new Clutter.GridLayout({
+            orientation: Clutter.Orientation.VERTICAL
+        });
+        this.actor = new St.Widget({
+            layout_manager: this._grid_layout
         });
 
         this.word_label = new St.Label();
@@ -38,26 +42,8 @@ const DictionaryEntry = new Lang.Class({
         this.reverse_translations_label = new St.Label();
         this.reverse_translations_label.clutter_text.set_markup(reverse_markup);
 
-        this.actor.add(this.word_label, {
-            row: 0,
-            col: 0,
-            x_align: St.Align.START,
-            y_align: St.Align.START,
-            x_fill: false,
-            x_expand: false,
-            y_fill: false,
-            y_expand: false
-        });
-        this.actor.add(this.reverse_translations_label, {
-            row: 0,
-            col: 1,
-            x_align: St.Align.START,
-            y_align: St.Align.START,
-            x_fill: false,
-            x_expand: false,
-            y_fill: false,
-            y_expand: false
-        });
+        this._grid_layout.attach(this.word_label, 0, 0, 1, 1);
+        this._grid_layout.attach(this.reverse_translations_label, 1, 0, 1, 1);
     },
 });
 
@@ -65,8 +51,8 @@ const DictionaryPOS = new Lang.Class({
     Name: "DictionaryPOS",
 
     _init: function(pos, word) {
-        this.actor = new St.Table({
-            homogeneous: false
+        this.actor = new St.BoxLayout({
+            vertical: true
         });
 
         let markup =
@@ -76,20 +62,11 @@ const DictionaryPOS = new Lang.Class({
         this._pos_label = new St.Label();
         this._pos_label.clutter_text.set_markup(markup);
 
-        this.actor.add(this._pos_label, {
-            row: 0,
-            col: 0,
-            y_expand: false,
-            x_expand: false,
-            x_align: St.Align.START,
-            y_align: St.Align.MIDDLE
-        });
+        this.actor.add(this._pos_label);
     },
 
     add_entry: function(dictionary_entry) {
         this.actor.add(dictionary_entry.actor, {
-            row: this.actor.row_count,
-            col: 0,
             x_fill: false,
             x_expand: false,
             y_fill: false,
@@ -126,9 +103,9 @@ const Dictionary = new Lang.Class({
 
     _show_terms: function(word, dict_data) {
         for(let i = 0; i < dict_data.length; i++) {
-            let pos = dict_data[i].pos;
-            let terms = dict_data[i].terms;
-            let entry = dict_data[i].entry;
+            let pos = dict_data[i][0];//.pos;
+            let terms = dict_data[i][1];//.terms;
+            let entry = dict_data[i][2];//.entry;
 
             if(Utils.is_blank(pos)) continue;
 
@@ -136,8 +113,8 @@ const Dictionary = new Lang.Class({
 
             for(let k = 0; k < entry.length; k++) {
                 let dictionary_entry = new DictionaryEntry(
-                    entry[k].word,
-                    entry[k].reverse_translation
+                    entry[k][0],//.word
+                    entry[k][1]//.reverse_translation
                 )
                 dictionary_pos.add_entry(dictionary_entry);
             }
@@ -189,7 +166,7 @@ const Translator = new Lang.Class({
     Extends: TranslationProviderBase.TranslationProviderBase,
 
     _init: function(extension_object) {
-        this.parent(NAME, LIMIT*MAX_QUERIES, URL);
+        this.parent(NAME, LIMIT*MAX_QUERIES, '');
         this._results = [];
         this._extension_object = extension_object;
     },
@@ -231,6 +208,7 @@ const Translator = new Lang.Class({
 
         for(let i = 0; i < sentences.length; i++) {
             let sentence = sentences[i];
+
             if(Utils.is_blank(sentence)) {
                 temp += '\n';
                 continue;
@@ -261,38 +239,101 @@ const Translator = new Lang.Class({
         return temp;
     },
 
-    parse_response: function(response_data) {
-        let json;
-        let result = '';
+    parse_response: function(data) {
+        function escapeRegExp(str) {
+            return str.replace(/([.*+?^=!:${}()|\[\]\/\\])/g, "\\$1");
+        }
 
+        function replaceAll(str, find, replace) {
+          return str.replace(new RegExp(escapeRegExp(find), 'g'), replace);
+        }
+
+        let stuff = {
+            "\x1B[1m" : '<b>',
+            "\x1B[22m" : '</b>',
+            "\x1B[4m" : '<u>',
+            "\x1B[24m" : '</u>'
+        }
         try {
-            json = JSON.parse(response_data);
+            for (let hex in stuff) {
+                data = replaceAll(data, hex, stuff[hex]);
+            }
+            return data;
+        } catch (e) {
+            return 'Error while parsing data: '+e;
         }
-        catch(e) {
-            log('%s Error: %s'.format(
-                this.name,
-                JSON.stringify(e, null, '\t')+"\nResponse_data:\n"+response_data
-            ));
-            return {
-                error: true,
-                message: "Can't translate text, please try later."
-            };
-        }
-
-        if(json.dict != undefined) {
-            this._show_dict(json.sentences[0].orig, json.dict);
-        }
-        else {
-            this._hide_dict();
-        }
-
-        for(let i = 0; i < json.sentences.length; i++) {
-            result += json.sentences[i].trans;
-        }
-        result = Utils.escape_html(result);
-
-        return result;
     },
+
+    do_translation: function(source_lang, target_lang, text, callback) {
+
+        function exec(cmd, exec_cb) {
+
+            try {
+		        var [res, pid, in_fd, out_fd, err_fd] = GLib.spawn_async_with_pipes(null, cmd, null, GLib.SpawnFlags.SEARCH_PATH, null);
+                var out_reader = new Gio.DataInputStream({
+                    base_stream: new Gio.UnixInputStream({fd: out_fd})
+                });
+            } catch(e) {
+                exec_cb('Error executing translate-shell: '+e);
+                return;
+            }
+
+
+            let output = '';
+            function _SocketRead(source_object, res) {
+                const [chunk, length] = out_reader.read_upto_finish(res);
+                if (chunk !== null) {
+                    output+= chunk+'\n';
+                    out_reader.read_line_async(null,null, _SocketRead);
+                } else {
+                    exec_cb(output);
+                }
+            }
+            out_reader.read_line_async(null,null, _SocketRead);
+        }
+        function execSync(cmd) {
+            try {
+                return GLib.spawn_command_line_sync(cmd)[1].toString().trim();
+            } catch ( e ) {
+                return false;
+            }
+        }
+
+        var proxy = false;
+        if (execSync('gsettings get org.gnome.system.proxy mode') == "'manual'") {
+            proxy = execSync('gsettings get org.gnome.system.proxy.http host').slice(1, -1)
+            proxy+= ':'
+            proxy+= execSync('gsettings get org.gnome.system.proxy.http port')
+        }
+
+        let command = ['trans'];
+        let options = [
+            '--show-original', 'n',
+            '--show-languages', 'n',
+            '--show-prompt-message', 'n',
+            '--no-bidi',
+        ];
+        let subjects = [
+            source_lang+':'+target_lang,
+            text
+        ];
+
+        if (proxy) {
+            options.push('-x')
+            options.push(proxy)
+        }
+
+        let _this = this;
+        let data = exec(command.concat(options).concat(subjects), function(data) {
+            if (!data) {
+                data = 'Error while translating, check your internet connection'
+            } else {
+                data = _this.parse_response(data);
+            }
+            callback(data);
+        });
+    },
+
 
     translate: function(source_lang, target_lang, text, callback) {
         if(Utils.is_blank(text)) {
@@ -304,24 +345,20 @@ const Translator = new Lang.Class({
 
         if(!splitted || splitted.length === 1) {
             if(splitted) text = splitted[0];
-            let url = this.make_url(source_lang, target_lang, text);
-            this._get_data_async(url, Lang.bind(this, function(result) {
-                let data = this.parse_response(result);
-                callback(data);
-            }));
+
+            this.do_translation(source_lang, target_lang, text, callback);
         }
         else {
             this._results = [];
+            let _this = this;
             Utils.asyncLoop({
                 length: splitted.length,
                 functionToLoop: Lang.bind(this, function(loop, i){
                     let text = splitted[i];
-                    let url = this.make_url(source_lang, target_lang, text);
-                    this._get_data_async(url, Lang.bind(this, function(result) {
-                        let data = this.parse_response(result);
+                    let data = _this.do_translation(source_lang, target_lang, text, function() {
                         this._results.push(data);
                         loop();
-                    }));
+                    });
                 }),
                 callback: Lang.bind(this, function() {
                     callback(this._results.join(' '));

@@ -1,5 +1,6 @@
 /* -*- mode: js2; js2-basic-offset: 4; indent-tabs-mode: nil -*- */
 /* jshint esnext: true */
+/* jshint -W097 */
 /* global imports: false */
 /**
     This program is free software: you can redistribute it and/or modify
@@ -36,8 +37,7 @@ const MEDIAPLAYER_PLAYLISTS_KEY = 'playlists';
 const MEDIAPLAYER_COVER_SIZE = 'coversize';
 const MEDIAPLAYER_RUN_DEFAULT = 'rundefault';
 const MEDIAPLAYER_RATING_KEY = 'rating';
-// OLD SETTING
-const MEDIAPLAYER_VOLUME_MENU_KEY = 'volumemenu';
+const MEDIAPLAYER_TRACKBOX_TEMPLATE = 'trackbox-template';
 
 const IndicatorPosition = {
     CENTER: 0,
@@ -46,6 +46,7 @@ const IndicatorPosition = {
 };
 
 const FADE_ANIMATION_TIME = 0.16;
+const COVER_SIZE = 100;
 
 const Status = {
     STOP: N_("Stopped"),
@@ -56,6 +57,7 @@ const Status = {
 
 const SEND_STOP_ON_CHANGE = [
     "org.mpris.MediaPlayer2.banshee",
+    "org.mpris.MediaPlayer2.vlc",
     "org.mpris.MediaPlayer2.pragha"
 ];
 

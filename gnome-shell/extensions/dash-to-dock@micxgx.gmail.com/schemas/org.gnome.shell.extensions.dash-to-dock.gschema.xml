@@ -5,6 +5,7 @@
     <value value='1' nick='minimize'/>
     <value value='2' nick='launch'/>
     <value value='3' nick='cycle-windows'/>
+    <value value='4' nick='quit'/>
   </enum>
   <!-- this is mean to Match StSide. LEFT and RIGHT actual position in reversed in
        rtl languages -->
@@ -14,6 +15,11 @@
     <value value='2' nick='BOTTOM'/>
     <value value='3' nick='LEFT'/>
   </enum>
+  <enum id='org.gnome.shell.extensions.dash-to-dock.intellihide-mode'>
+    <value value='0' nick='ALL_WINDOWS'/>
+    <value value='1' nick='FOCUS_APPLICATION_WINDOWS'/>
+    <value value='2' nick='MAXIMIZED_WINDOWS'/>
+  </enum>
   <schema path="/org/gnome/shell/extensions/dash-to-dock/" id="org.gnome.shell.extensions.dash-to-dock">
     <key name="dock-position" enum="org.gnome.shell.extensions.dash-to-dock.position">
       <default>'LEFT'</default>
@@ -21,7 +27,7 @@
       <description>Dock is shown on the Left, Right, Top or Bottom side of the screen.</description>
     </key>
     <key type="d" name="animation-time">
-      <default>0.25</default>
+      <default>0.2</default>
       <summary>Animation time</summary>
       <description>Sets the time duration of the autohide effect.</description>
     </key>
@@ -31,12 +37,22 @@
       <description>Sets the delay after the mouse reaches the screen border before showing the dock.</description>
     </key>
     <key type="d" name="hide-delay">
-      <default>0.10</default>
+      <default>0.20</default>
       <summary>Show delay</summary>
       <description>Sets the delay after the mouse left the dock before hiding it.</description>
     </key>
+    <key type="b" name="custom-background-color">
+      <default>false</default>
+      <summary>Set a custom dash background background color</summary>
+      <description>Sets the color for the dash background.</description>
+    </key>
+    <key type="s" name="background-color">
+      <default>"#ffffff"</default>
+      <summary>Dash background color.</summary>
+      <description>Customize the background color of the dash.</description>
+    </key>
     <key type="b" name="opaque-background">
-      <default>true</default>
+      <default>false</default>
       <summary>Dash background is opaque</summary>
       <description>Makes the background of the dash opaque improving readability when in autohide mode.</description>
     </key>
@@ -50,9 +66,9 @@
       <summary>Dock dodges windows</summary>
       <description>Enable or disable intellihide mode</description>
     </key>
-    <key type="b" name="intellihide-perapp">
-      <default>false</default>
-      <summary>Dock dodges only same app windows</summary>
+    <key name="intellihide-mode" enum="org.gnome.shell.extensions.dash-to-dock.intellihide-mode">
+      <default>'FOCUS_APPLICATION_WINDOWS'</default>
+      <summary>Define which windows are considered for intellihide.</summary>
       <description></description>
     </key>
     <key type="b" name="autohide">
@@ -66,9 +82,14 @@
       <description>Enable or disable requiring pressure to show the dash</description>
     </key>
     <key type="d" name="pressure-threshold">
-      <default>50</default>
+      <default>100</default>
       <summary>Pressure threshold</summary>
       <description>Sets how much pressure is needed to show the dash.</description>
+    </key>
+    <key type="b" name="autohide-in-fullscreen">
+      <default>false</default>
+      <summary>Enable autohide in fullscreen mode.</summary>
+      <description>Enable autohide in fullscreen mode.</description>
     </key>
     <key type="b" name="dock-fixed">
       <default>false</default>
@@ -80,30 +101,20 @@
       <summary>Switch workspace by scrolling over the dock</summary>
       <description>Add the possibility to switch workspace by mouse scrolling over the dock.</description>
     </key>
-    <key type="b" name="scroll-switch-workspace-whole">
-      <default>false</default>
-      <summary>Whole dock is sensible to scroll events</summary>
-      <description>Whether thw whole dock when scrolled above is sensible to scroll events or only an 1px wide area close to the screen border.</description>
-    </key>
-    <key type="b" name="scroll-switch-workspace-one-at-a-time">
-      <default>true</default>
-      <summary>Switch worskpace one at a time</summary>
-      <description>Switch only one workspace on each scroll event</description>
-    </key>
-    <key type="i" name="scroll-switch-workspace-dead-time">
-      <default>250</default>
-      <summary>A deadtime in ms</summary>
-      <description>A deadtime between each worskapace switch triggere by mouse scroll</description>
-    </key>
     <key type="i" name="dash-max-icon-size">
       <default>48</default>
       <summary>Maximum dash icon size</summary>
       <description>Set the allowed maximum dash icon size. Allowed range: 16..64.</description>
     </key>
+    <key type="b" name="icon-size-fixed">
+      <default>false</default>
+      <summary>Fixed icon size</summary>
+      <description>Keep the icon size fived by scrolling the dock.</description>
+    </key>
     <key type="b" name="apply-custom-theme">
       <default>false</default>
       <summary>Apply custom theme</summary>
-      <description>Apply customization to the dash appearence</description>
+      <description>Apply customization to the dash appearance</description>
     </key>
     <key type="b" name="custom-theme-shrink">
       <default>false</default>
@@ -115,20 +126,55 @@
       <summary>TODO</summary>
       <description>TODO</description>
     </key>
+    <key type="b" name="custom-theme-customize-running-dots">
+      <default>false</default>
+      <summary>Customize the style of the running application indicators.</summary>
+      <description>Customize the style of the running application indicators.</description>
+    </key>
+    <key type="s" name="custom-theme-running-dots-color">
+      <default>"#ffffff"</default>
+      <summary>Running application indicators color</summary>
+      <description>Customize the color of the running application indicators.</description>
+    </key>
+    <key type="s" name="custom-theme-running-dots-border-color">
+      <default>"#ffffff"</default>
+      <summary>Running application indicators border color.</summary>
+      <description>Customize the border color of the running application indicators.</description>
+    </key>
+    <key type="i" name="custom-theme-running-dots-border-width">
+      <default>0</default>
+      <summary>Running application indicators border width.</summary>
+      <description>Customize the border width of the running application indicators.</description>
+    </key>
     <key type="b" name="show-running">
       <default>true</default>
       <summary>Show running apps</summary>
       <description>Show or hide running appplications icons in the dash</description>
+    </key>
+    <key type="b" name="isolate-workspaces">
+      <default>false</default>
+      <summary>Provide workspace isolation</summary>
+      <description>Dash shows only windows from the currentworkspace</description>
     </key>
     <key type="b" name="show-favorites">
       <default>true</default>
       <summary>Show favorites apps</summary>
       <description>Show or hide favorite appplications icons in the dash</description>
     </key>
+    <key type="b" name="show-show-apps-button">
+      <default>true</default>
+      <summary>Show applications button</summary>
+      <description>Show appplications button in the dash</description>
+    </key>
     <key type="b" name="show-apps-at-top">
       <default>false</default>
       <summary>Show application button at top</summary>
       <description>Show appplication button at top of the dash</description>
+    </key>
+    <key type="b" name="animate-show-apps">
+      <default>true</default>
+      <summary>Animate Show Applications from the desktop</summary>
+      <description>Animate Show Applications from the desktop</description>
     </key>
     <key type="b" name="bolt-support">
       <default>true</default>
@@ -136,7 +182,7 @@
       <description>Make the extension work properly when bolt extensions is enabled</description>
     </key>
     <key type="d" name="height-fraction">
-      <default>0.95</default>
+      <default>0.90</default>
       <summary>Dock max height (fraction of available space)</summary>
     </key>
     <key type="b" name="extend-height">
@@ -151,7 +197,7 @@
     <key type="b" name="customize-click">
       <default>true</default>
       <summary>Customize click behaviour</summary>
-      <description>Custmize action on various mouse events</description>
+      <description>Customize action on various mouse events</description>
     </key>
     <key type="b" name="minimize-shift">
       <default>true</default>
@@ -165,6 +211,21 @@
       <default>'cycle-windows'</default>
       <summary>Action when clicking on a running app</summary>
       <description>Set the action that is executed when clicking on the icon of a running application</description>
+    </key>
+    <key name="shift-click-action" enum="org.gnome.shell.extensions.dash-to-dock.clickAction">
+      <default>'minimize'</default>
+      <summary>Action when shit+clicking on a running app</summary>
+      <description>Set the action that is executed when shift+clicking on the icon of a running application</description>
+    </key>
+    <key name="middle-click-action" enum="org.gnome.shell.extensions.dash-to-dock.clickAction">
+      <default>'launch'</default>
+      <summary>Action when clicking on a running app</summary>
+      <description>Set the action that is executed when middle-clicking on the icon of a running application</description>
+    </key>
+    <key name="shift-middle-click-action" enum="org.gnome.shell.extensions.dash-to-dock.clickAction">
+      <default>'launch'</default>
+      <summary>Action when clicking on a running app</summary>
+      <description>Set the action that is executed when shift+middle-clicking on the icon of a running application</description>
     </key>
   </schema>
 </schemalist>

@@ -3,17 +3,15 @@
 /*
  * Part of this file comes from gnome-shell-extensions:
  * http://git.gnome.org/browse/gnome-shell-extensions/
- * 
  */
 
-
+const Clutter = imports.gi.Clutter;
 const Gettext = imports.gettext;
 const Gio = imports.gi.Gio;
 const Lang = imports.lang;
 
 const Config = imports.misc.config;
 const ExtensionUtils = imports.misc.extensionUtils;
-
 
 /**
  * initTranslations:
@@ -27,7 +25,7 @@ function initTranslations(domain) {
 
     domain = domain || extension.metadata['gettext-domain'];
 
-    // check if this extension was built with "make zip-file", and thus
+    // Check if this extension was built with "make zip-file", and thus
     // has the locale files in a subfolder
     // otherwise assume that extension has been installed in the
     // same prefix as gnome-shell
@@ -53,7 +51,7 @@ function getSettings(schema) {
 
     const GioSSS = Gio.SettingsSchemaSource;
 
-    // check if this extension was built with "make zip-file", and thus
+    // Check if this extension was built with "make zip-file", and thus
     // has the schema files in a subfolder
     // otherwise assume that extension has been installed in the
     // same prefix as gnome-shell (and therefore schemas are available
@@ -72,59 +70,127 @@ function getSettings(schema) {
         throw new Error('Schema ' + schema + ' could not be found for extension '
                         + extension.metadata.uuid + '. Please check your installation.');
 
-    return new Gio.Settings({ settings_schema: schemaObj });
+    return new Gio.Settings({
+        settings_schema: schemaObj
+    });
 }
 
-// try to simplify global signals handling
-const globalSignalHandler = new Lang.Class({
-    Name: 'dashToDock.globalSignalHandler',
+/**
+ * Simplify global signals and function injections handling
+ * abstract class
+ */
+const BasicHandler = new Lang.Class({
+    Name: 'DashToDock.BasicHandler',
 
-    _init: function(){
-        this._signals = new Object();
+    _init: function() {
+        this._storage = new Object();
     },
 
-    push: function(/*unlimited 3-long array arguments*/){
-        this._addSignals('generic', arguments);
+    add: function(/* unlimited 3-long array arguments */) {
+        // Convert arguments object to array, concatenate with generic
+        let args = Array.concat('generic', Array.slice(arguments));
+        // Call addWithLabel with ags as if they were passed arguments
+        this.addWithLabel.apply(this, args);
     },
 
-    disconnect: function() {
-        for( let label in this._signals )
-            this.disconnectWithLabel(label);
+    destroy: function() {
+        for( let label in this._storage )
+            this.removeWithLabel(label);
     },
 
-    pushWithLabel: function( label /* plus unlimited 3-long array arguments*/) {
+    addWithLabel: function(label /* plus unlimited 3-long array arguments*/) {
+        if (this._storage[label] == undefined)
+            this._storage[label] = new Array();
 
-        // skip first element of thearguments array;
-        let elements = new Array;
-        for(let i = 1 ; i< arguments.length; i++)
-            elements.push(arguments[i]);
-
-        this._addSignals(label, elements);
-    },
-
-    _addSignals: function(label, elements) {
-        if(this._signals[label] == undefined)
-            this._signals[label] = new Array();
-
-        for( let i = 0; i < elements.length; i++ ) { 
-            let object = elements[i][0];
-            let event = elements[i][1];
-
-            let id = object.connect(event, elements[i][2]);
-            this._signals[label].push( [ object , id ] );
+        // Skip first element of the arguments
+        for (let i = 1; i < arguments.length; i++) {
+            this._storage[label].push( this._create(arguments[i]));
         }
     },
 
-    disconnectWithLabel: function(label) {
+    removeWithLabel: function(label) {
+        if (this._storage[label]) {
+            for (let i = 0; i < this._storage[label].length; i++)
+                this._remove(this._storage[label][i]);
 
-        if(this._signals[label]) {
-            for( let i = 0; i < this._signals[label].length; i++ ) {
-                this._signals[label][i][0].disconnect(this._signals[label][i][1]);
-            }
-
-            delete this._signals[label];
+            delete this._storage[label];
         }
+    },
+
+    // Virtual methods to be implemented by subclass
+
+    /**
+     * Create single element to be stored in the storage structure
+     */
+    _create: function(item) {
+        throw new Error('no implementation of _create in ' + this);
+    },
+
+    /**
+     * Correctly delete single element
+     */
+    _remove: function(item) {
+        throw new Error('no implementation of _remove in ' + this);
     }
-
-
 });
+
+/**
+ * Manage global signals
+ */
+const GlobalSignalsHandler = new Lang.Class({
+    Name: 'DashToDock.GlobalSignalHandler',
+    Extends: BasicHandler,
+
+    _create: function(item) {
+        let object = item[0];
+        let event = item[1];
+        let callback = item[2]
+        let id = object.connect(event, callback);
+
+        return [object, id];
+    },
+
+    _remove: function(item) {
+         item[0].disconnect(item[1]);
+    }
+});
+
+/**
+ * Manage function injection: both instances and prototype can be overridden
+ * and restored
+ */
+const InjectionsHandler = new Lang.Class({
+    Name: 'DashToDock.InjectionsHandler',
+    Extends: BasicHandler,
+
+    _create: function(item) {
+        let object = item[0];
+        let name = item[1];
+        let injectedFunction = item[2];
+        let original = object[name];
+
+        object[name] = injectedFunction;
+        return [object, name, injectedFunction, original];
+    },
+
+    _remove: function(item) {
+        let object = item[0];
+        let name = item[1];
+        let original = item[3];
+        object[name] = original;
+    }
+});
+
+/**
+ * Return the actual position reverseing left and right in rtl
+ */
+function getPosition(settings) {
+    let position = settings.get_enum('dock-position');
+    if (Clutter.get_default_text_direction() == Clutter.TextDirection.RTL) {
+        if (position == St.Side.LEFT)
+            position = St.Side.RIGHT;
+        else if (position == St.Side.RIGHT)
+            position = St.Side.LEFT;
+    }
+    return position;
+}

@@ -1,4 +1,8 @@
 /* -*- mode: js2; js2-basic-offset: 4; indent-tabs-mode: nil -*- */
+/* jshint esnext: true */
+/* jshint -W097 */
+/* global imports: false */
+/* global global: false */
 /**
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,39 +28,57 @@ const Panel = Me.imports.panel;
 const Settings = Me.imports.settings;
 
 /* global values */
-let playerManager;
-let mediaplayerMenu;
+let manager;
+let indicator;
 
 function init() {
-    Lib.initTranslations(Me);
-    Settings.init();
-    Settings.gsettings.connect("changed::" + Settings.MEDIAPLAYER_INDICATOR_POSITION_KEY, function() {
-        disable();
-        enable();
-    });
+  Lib.initTranslations(Me);
+  Settings.init();
+  Settings.gsettings.connect("changed::" + Settings.MEDIAPLAYER_INDICATOR_POSITION_KEY, function() {
+    if (manager) {
+      disable();
+      enable();
+    }
+  });
 }
 
 function enable() {
-    let position = Settings.gsettings.get_enum(Settings.MEDIAPLAYER_INDICATOR_POSITION_KEY);
-    if (position == Settings.IndicatorPosition.VOLUMEMENU) {
-        mediaplayerMenu = Main.panel.statusArea.aggregateMenu;
-    }
-    else {
-        mediaplayerMenu = new Panel.MediaplayerStatusButton();
-        if (position == Settings.IndicatorPosition.RIGHT)
-            Main.panel.addToStatusArea('mediaplayer', mediaplayerMenu);
-        else if (position == Settings.IndicatorPosition.CENTER)
-            Main.panel.addToStatusArea('mediaplayer', mediaplayerMenu, 999, 'center');
-    }
-    playerManager = new Manager.PlayerManager(mediaplayerMenu);
-    mediaplayerMenu._delegate = playerManager;
+  let position = Settings.gsettings.get_enum(Settings.MEDIAPLAYER_INDICATOR_POSITION_KEY),
+      menu;
+
+  if (position == Settings.IndicatorPosition.VOLUMEMENU) {
+    indicator = new Panel.AggregateMenuIndicator();
+    menu = Main.panel.statusArea.aggregateMenu.menu;
+  }
+  else {
+    indicator = new Panel.PanelIndicator();
+    menu = indicator.menu;
+  }
+
+  manager = new Manager.PlayerManager(menu);
+
+  if (position == Settings.IndicatorPosition.RIGHT) {
+    Main.panel.addToStatusArea('mediaplayer', indicator);
+  }
+  else if (position == Settings.IndicatorPosition.CENTER) {
+    Main.panel.addToStatusArea('mediaplayer', indicator, 999, 'center');
+  }
+  else {
+    Main.panel.statusArea.aggregateMenu._indicators.insert_child_at_index(indicator.indicators, 0);
+  }
+
+  indicator.manager = manager;
 }
 
 function disable() {
-    playerManager.destroy();
-    playerManager = null;
-    if (mediaplayerMenu instanceof Panel.MediaplayerStatusButton) {
-        mediaplayerMenu.destroy();
-        mediaplayerMenu = null;
-    }
+  manager.destroy();
+  manager = null;
+  if (indicator instanceof Panel.PanelIndicator) {
+    indicator.destroy();
+    indicator = null;
+  }
+  else {
+    indicator.indicators.destroy();
+    indicator = null;
+  }
 }

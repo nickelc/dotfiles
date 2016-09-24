@@ -1,3 +1,145 @@
+3.20.0
+======
+* version bump, nothing to see here
+
+3.19.92
+=======
+* version bump, nothing to see here
+
+3.19.91
+=======
+* updated translations (oc)
+
+3.19.90
+=======
+* version bump, nothing to see here
+
+3.19.4
+======
+* screenshot-window-sizer: HiDPI support
+* Fix gnome-shell component in classic session
+* updated translations (lt)
+
+3.19.3
+======
+* native-window-placement: Don't let border overlap title
+* apps-menu: Fix handling of .desktop files in subdirectories
+* updated translations (is)
+
+3.19.2
+======
+* updated translations (gd)
+
+3.19.1
+======
+* Fix some theme issues
+
+3.18.1
+======
+* window-list: Fix accessibility of window buttons
+* apps-menu: Fix unreliable highlight
+* updated translations (ar)
+
+3.18.0
+======
+* Bump version
+
+3.17.92
+=======
+* places: Include DESKTOP when desktop icons are enabled
+* updated translations (fa)
+
+3.17.91
+=======
+* updated translations (nl, pl, zh_TW)
+
+3.17.90
+=======
+* window-list: Improve application ordering
+* workspace-indicator: Use consistent workspace numbering
+
+3.17.4
+======
+* updated translations (fur)
+
+3.17.3
+======
+* window-list: Adjust with text-scaling-factor
+* classic style updates
+* updated translations (pt, ro)
+
+3.17.2
+======
+* updated translations (oc, pt, zh_CN)
+
+3.17.1
+======
+* style updates
+* updated translations (oc)
+
+3.16.1
+======
+* window-list: Fix workspace indicators popup menu position
+* apps-menu: Fix taking over panel-main-menu shortcut
+* updated translations (et, ja, lv)
+
+3.16.0
+======
+* updated translations (ca)
+
+3.15.92
+=======
+* classic: Update theme
+* update for mutter API changes
+* updated translations (bg, bs, da, fi, pa, ru, sr, sr@latin, tg)
+
+3.15.91
+=======
+* classic: Update theme
+* systemMonitor extension was removed, as the message tray where it
+  put its indicator no longer exists
+* window-list: Adjust for gnome-shell changes
+* updated translations (gl, it, kk, ko, lt, pl, sk, uk, zh_TW)
+
+3.15.90
+=======
+* classic: Visual refresh based on new shell theme
+* window-list: Adjust for gnome-shell changes
+* updated translations (an, el, eo, eu, fr, he, is, sv, tr)
+
+3.15.4
+======
+* window-list: Improve interaction with system modal dialogs
+* updated translations (cs, de, es, eu, fur, hu, id, nb, pt_BR, ru, sl, vi)
+
+3.15.3.1
+========
+* adjust to gnome-shell change
+
+3.15.3
+======
+* classic-mode: Add high-contrast theme variant, drop .desktop file
+* places-menu: Fix error when XDG user directories are not set up
+* window-list: Add option to show on all monitors
+* updated translations (eu, hu, kk, ro, tr)
+
+3.15.2
+======
+* removable-drive, user-theme, window-list: Update for gnome-shell changes
+* apps-menu: Fix some visual glitches
+* Fix classic mode style
+* updated translations (an, cs, he, vi)
+
+3.15.1
+======
+ * updated translations (es, nb)
+
+3.14.1
+======
+ * alternateTab: Fix dismissing popup with Escape
+ * some improvements to the window-list
+   (spacing in app buttons, no flash when closing windows with auto-grouping)
+ * updated translations (lv, it, pt, bg)
 
 3.14.0
 ======

@@ -1,81 +1,84 @@
+.mediaplayer-menu {
+  width: 360px;
+}
+
 .controls {
-    spacing: 5px;
+    padding-top: 0.4em;
+    spacing: 8px;
+    padding-bottom: 0.4em;
 }
 
 .indicator-icon {
     padding-right: 0px;
 }
 
-.status-icon {
-    icon-size: 10px;
-    padding-bottom: 0.4em;
+.indicators {
+    spacing: 0px;
+}
+
+.indicator {
+    padding-right: 1px;
+}
+
+.secondary-indicator {
+    icon-size: 8px;
+    padding-top: 0.5em;
+}
+
+.third-indicator {
+    icon-size: 8px;
+    padding-left: 0.5em;
 }
 
 .track-box {
-    padding-left: 2em;
+    padding-left: 2.1em;
+    padding-right: 2em;
 }
 
 .track-cover {
-    border: 2px solid rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.5);
     border-radius: 2px;
 }
 
 .track-infos:ltr {
-    padding-left: 1em;
-    width: 15em;
+    padding-left: 0em;
 }
 
 .track-infos:rtl {
-    padding-left: 1em;
-    width: 15em;
+    padding-left: 0em;
 }
 
-.track-title {
-    font-weight: bold;
-    font-size: 1.1em;
+.track-info {
+    padding-bottom: 0.2em;
 }
 
-.track-artist {
-    padding-top: 0.2em;
-    font-size: 0.9em;
+.track-info-big {
+  font-weight: bold;
+  font-size: 1.1em;
 }
 
-.track-album {
-    padding-top: 0.2em;
-    font-size: 0.9em;
+.track-info-medium {
+  font-weight: bold;
 }
 
 .track-rating {
-    padding-top: 0.15em;
+    padding-top: 0.2em;
     font-size: 0.9em;
 }
 
 .menu-icon {
     icon-size: 1.14em;
-    padding-right: .4em;
 }
 
-.slider-item StLabel {
+.slider-item .slider-text {
     font-size: 0.9em;
-    width: 9em;
+    width: 7em;
 }
 
-.title-button {
-    border-radius: 12px;
-    border-width: 1px;
-    padding: 4px;
-}
-
-.title-button:hover,
-.popup-menu-item:active .title-button {
-    padding: 5px;
-    border: none;
-}
-
-.popup-menu-item:active .title-button {
+.popup-menu-item:active {
     color: white;
 }
 
-.control-button:disabled {
+.system-menu-action:disabled {
     color: #999;
 }

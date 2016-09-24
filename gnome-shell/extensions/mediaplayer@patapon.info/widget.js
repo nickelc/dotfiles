@@ -1,4 +1,8 @@
 /* -*- mode: js2; js2-basic-offset: 4; indent-tabs-mode: nil -*- */
+/* jshint esnext: true */
+/* jshint -W097 */
+/* jshint multistr: true */
+/* global imports: false */
 /**
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,6 +18,8 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **/
 
+'use strict';
+
 const Mainloop = imports.mainloop;
 const St = imports.gi.St;
 const PopupMenu = imports.ui.popupMenu;
@@ -22,6 +28,11 @@ const Pango = imports.gi.Pango;
 const GLib = imports.gi.GLib;
 const Gio = imports.gi.Gio;
 const Lang = imports.lang;
+const Tweener = imports.ui.tweener;
+const Params = imports.misc.params;
+
+const Me = imports.misc.extensionUtils.getCurrentExtension();
+const Settings = Me.imports.settings;
 
 const PlayerButtons = new Lang.Class({
     Name: 'PlayerButtons',
@@ -43,18 +54,12 @@ const PlayerButton = new Lang.Class({
     _init: function(icon, callback) {
         this.icon = new St.Icon({
             icon_name: icon + '-symbolic',
-            icon_size: 20
         });
-
-        this.actor = new St.Button({style_class: 'notification-icon-button control-button',
+        this.actor = new St.Button({style_class: 'system-menu-action',
                                     child: this.icon});
-        this.actor._delegate = this
+        this.actor._delegate = this;
 
         this._callback_id = this.actor.connect('clicked', callback);
-
-        // override base style
-        this.icon.set_style('padding: 0px');
-        this.actor.set_style('padding: 8px');
     },
 
     setCallback: function(callback) {
@@ -92,19 +97,15 @@ const SliderItem = new Lang.Class({
     Extends: PopupMenu.PopupBaseMenuItem,
 
     _init: function(label, icon, value) {
-        this.parent();
-
-        this._box = new St.Table({style_class: 'slider-item'});
+        this.parent({style_class: 'slider-item'});
 
         this._icon = new St.Icon({style_class: 'menu-icon', icon_name: icon + '-symbolic'});
         this._slider = new Slider.Slider(value);
-        this._label = new St.Label({text: label});
+        this._label = new St.Label({style_class: 'slider-text', text: label});
 
-        this._box.add(this._icon, {row: 0, col: 0, x_expand: false});
-        this._box.add(this._label, {row: 0, col: 1, x_expand: false});
-        this._box.add(this._slider.actor, {row: 0, col: 2, x_expand: true});
-
-        this.actor.add(this._box, {span: -1, expand: true});
+        this.actor.add(this._icon);
+        this.actor.add(this._label);
+        this.actor.add(this._slider.actor, {expand: true});
     },
 
     setValue: function(value) {
@@ -129,97 +130,112 @@ const TrackBox = new Lang.Class({
     Name: "TrackBox",
     Extends: PopupMenu.PopupBaseMenuItem,
 
-    _init: function(cover) {
-        this.parent({reactive: false, style_class: "track-box"});
-        // This adds an unwanted height if the PopupBaseMenuItem is empty
-        this.actor.remove_actor(this._ornamentLabel)
+    _init: function(cover, params) {
+      params = Params.parse(params, {
+        hover: false,
+        style_class: "track-box"
+      });
+      this.parent(params);
+      // This adds an unwanted height if the PopupBaseMenuItem is empty
+      this.actor.remove_actor(this._ornamentLabel);
 
-        this.box = new St.BoxLayout({vertical: false});
-        this._cover = cover;
-        this._infos = new St.Table({style_class: "track-infos"});
-        this.box.add(this._cover, {x_expand: false});
-        this.box.add(this._infos, {x_expand: true});
-
-        this.actor.add(this.box, {expand: true});
+      this._cover = cover;
+      this._infos = new St.BoxLayout({style_class: "track-infos", vertical: true});
+      this.actor.add(this._cover);
+      this.actor.add(this._infos, {expand: true, y_expand: true});
     },
 
     addInfo: function(item, row) {
-        this._infos.add(item.actor, {row: row, col: 1, y_expand: false});
+        this._infos.add(item.actor);
+    },
+
+    empty: function() {
+        this._infos.destroy_all_children();
+    },
+
+    get hidden() {
+      return this._hidden || false;
+    },
+
+    set hidden(value) {
+      this._hidden = value;
+    },
+
+    hide: function() {
+      this.actor.hide();
+      this.actor.opacity = 0;
+      this.actor.set_height(0);
+      this.hidden = true;
+    },
+
+    show: function() {
+      this.actor.show();
+      this.actor.opacity = 255;
+      this.actor.set_height(-1);
+      this.hidden = false;
+    },
+
+    showAnimate: function() {
+      if (!this.actor.get_stage() || this._hidden === false)
+        return;
+
+      this.actor.set_height(-1);
+      let [minHeight, naturalHeight] = this.actor.get_preferred_height(-1);
+      this.actor.set_height(0);
+      this.actor.show();
+      Tweener.addTween(this.actor, {
+        opacity: 255,
+        height: naturalHeight,
+        time: Settings.FADE_ANIMATION_TIME,
+        transition: 'easeOutQuad',
+        onComplete: function() {
+          this.show();
+        },
+        onCompleteScope: this
+      });
+    },
+
+    hideAnimate: function() {
+      if (!this.actor.get_stage() || this._hidden === true)
+        return;
+
+      Tweener.addTween(this.actor, {
+        opacity: 0,
+        height: 0,
+        time: Settings.FADE_ANIMATION_TIME,
+        transition: 'easeOutQuad',
+        onComplete: function() {
+          this.hide();
+        },
+        onCompleteScope: this
+      });
     }
 });
 
-const TrackTitle = new Lang.Class({
-    Name: "TrackTitle",
+const TrackInfo = new Lang.Class({
+    Name: "TrackInfo",
 
-    _init: function(prepend, text, style) {
-        this.actor = new St.Table({style_class: style});
-        this.actor._delegate = this;
+    _init: function(text, style) {
+      this.actor = new St.BoxLayout({style_class: style, vertical: false});
+      this.actor._delegate = this;
 
-        this._label = new St.Label();
-        if (prepend) {
-            this._prepend = new St.Label({style_class: 'popup-inactive-menu-item', text: prepend + " "});
-            this._prepend.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
-            this.actor.add(this._prepend, {row: 0, col: 0, x_fill: true, x_expand: false});
-            this.actor.add(this._label, {row: 0, col: 1});
-        }
-        else
-            this.actor.add(this._label, {row: 0, col: 0});
+      this._label = new St.Label({style_class: 'popup-inactive-menu-item'});
+      this.actor.add(this._label, {expand: true});
 
-        this.setText(text);
+      this.setText(text);
     },
 
     setText: function(text) {
-        if (this._label.clutter_text) {
-            this._label.clutter_text.line_wrap = true;
-            this._label.clutter_text.line_wrap_mode = Pango.WrapMode.WORD_CHAR;
-            this._label.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
-            this._label.clutter_text.set_text(text.toString());
-        }
+      if (this._label.clutter_text) {
+        this._label.clutter_text.line_wrap = true;
+        this._label.clutter_text.line_wrap_mode = Pango.WrapMode.WORD_CHAR;
+        this._label.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
+        this._label.clutter_text.set_markup(text);
+      }
     },
 
     getText: function() {
-        return this._label.text;
-    }
-});
-
-const TitleItem = new Lang.Class({
-    Name: "TitleItem",
-    Extends: PopupMenu.PopupBaseMenuItem,
-
-    _init: function(text, icon, button_icon, button_callback) {
-        this.parent();
-        this.icon = new St.Bin({child: icon});
-        this.label = new St.Label({text: text});
-        this.labelBin = new St.Bin({child: this.label});
-        this.actor.add(this.icon);
-        this.actor.add(this.labelBin);
-
-        if (button_icon) {
-            this.button = new St.Button({style_class: "system-menu-action title-button"});
-            this.button.connect('clicked', button_callback);
-            this.button_icon = new St.Icon({
-                icon_name: button_icon,
-                icon_size: 14
-            });
-            this.button.set_child(this.button_icon);
-            this.actor.add(this.button, {expand: true, x_fill: false, x_align: St.Align.END});
-        }
-    },
-
-    setLabel: function(text) {
-        this.label.text = text;
-    },
-
-    setIcon: function(icon) {
-        this.icon.set_child(icon);
-    },
-
-    hideButton: function() {
-        this.button.hide();
-    },
-
-    showButton: function() {
-        this.button.show();
+      return this._label.text;
     }
 });
 
@@ -243,7 +259,8 @@ const TrackRating = new Lang.Class({
         this._supported = {
             "org.mpris.MediaPlayer2.banshee": this.applyBansheeRating,
             "org.mpris.MediaPlayer2.rhythmbox": this.applyRhythmbox3Rating,
-            "org.mpris.MediaPlayer2.guayadeque": this.applyGuayadequeRating
+            "org.mpris.MediaPlayer2.guayadeque": this.applyGuayadequeRating,
+            "org.mpris.MediaPlayer2.Lollypop": this.applyLollypopRating
         };
         // Icons
         this._starIcon = [];
@@ -291,6 +308,11 @@ const TrackRating = new Lang.Class({
     },
 
     setRating: function(value) {
+        value = Math.round(value);
+        if (value > 5)
+          value = 5;
+        if (value < 0)
+          value = 0;
         for (let i = 0; i < 5; i++) {
             this._starButton[i].child.icon_name = "non-starred-symbolic";
             this._starButton[i]._starred = false;
@@ -306,9 +328,9 @@ const TrackRating = new Lang.Class({
         let rateValue;
         // Click on a already starred icon, unrates
         if (button._starred && button._rateValue == this._value)
-            rateValue = 0
+            rateValue = 0;
         else
-            rateValue = button._rateValue
+            rateValue = button._rateValue;
         // Apply the rating in the player
         let applied = false;
         if (this._supported[this._player.busName]) {
@@ -330,6 +352,11 @@ const TrackRating = new Lang.Class({
         return true;
     },
 
+    applyLollypopRating: function(value) {
+        GLib.spawn_command_line_async("lollypop --set-rating=%s".format(value));
+        return true;
+    },
+
     applyRhythmbox3Rating: function(value) {
         const Rhythmbox3Iface = '<node>\
             <interface name="org.gnome.Rhythmbox3.RhythmDB">\
@@ -341,10 +368,10 @@ const TrackRating = new Lang.Class({
         </node>';
         const Rhythmbox3Proxy = Gio.DBusProxy.makeProxyWrapper(Rhythmbox3Iface);
 
-        if (this._player.trackUrl) {
+        if (this._player.state.trackUrl) {
             let proxy = new Rhythmbox3Proxy(Gio.DBus.session, "org.gnome.Rhythmbox3",
                                             "/org/gnome/Rhythmbox3/RhythmDB");
-            proxy.SetEntryPropertiesRemote(this._player.trackUrl, {rating: GLib.Variant.new_double(value)});
+            proxy.SetEntryPropertiesRemote(this._player.state.trackUrl, {rating: GLib.Variant.new_double(value)});
             return true;
         }
 
@@ -360,16 +387,23 @@ const PlaylistItem = new Lang.Class({
     Name: "PlaylistItem",
     Extends: PopupMenu.PopupBaseMenuItem,
 
-    _init: function (text, obj, icon) {
+    _init: function (text, obj) {
         this.parent();
-
         this.obj = obj;
-        this.box = new St.BoxLayout();
         this.label = new St.Label({text: text});
-        this.icon = new St.Icon({style_class: 'menu-icon', icon_name: 'view-list-symbolic'});
-        this.box.add_actor(this.icon);
-        this.box.add_actor(this.label);
+        this.actor.add(this.label);
+    },
 
-        this.actor.add(this.box);
+    setPlaylistActive: function(value) {
+      if (value) {
+        this.setOrnament(PopupMenu.Ornament.DOT);
+      }
+      else {
+        this.setOrnament(PopupMenu.Ornament.NONE);
+      }
+    },
+
+    isPlaylistActive: function() {
+      return this._ornament !== PopupMenu.Ornament.NONE;
     }
 });
