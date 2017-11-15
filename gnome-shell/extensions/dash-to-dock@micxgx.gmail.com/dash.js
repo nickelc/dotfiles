@@ -23,7 +23,7 @@ const Util = imports.misc.util;
 const Workspace = imports.ui.workspace;
 
 const Me = imports.misc.extensionUtils.getCurrentExtension();
-const Convenience = Me.imports.convenience;
+const Utils = Me.imports.utils;
 const AppIcons = Me.imports.appIcons;
 
 let DASH_ANIMATION_TIME = Dash.DASH_ANIMATION_TIME;
@@ -60,7 +60,7 @@ const MyDashActor = new Lang.Class({
         this._dtdSettings = settings;
         this._rtl = (Clutter.get_default_text_direction() == Clutter.TextDirection.RTL);
 
-        this._position = Convenience.getPosition(settings);
+        this._position = Utils.getPosition(settings);
         this._isHorizontal = ((this._position == St.Side.TOP) ||
                                (this._position == St.Side.BOTTOM));
 
@@ -173,21 +173,23 @@ const baseIconSizes = [16, 22, 24, 32, 48, 64, 96, 128];
  *   ensure actor is visible on keyfocus inseid the scrollview
  * - add 128px icon size, might be usefull for hidpi display
  * - sync minimization application target position.
+ * - keep running apps ordered.
  */
-const MyDash = new Lang.Class({
+var MyDash = new Lang.Class({
     Name: 'DashToDock.MyDash',
 
-    _init: function(settings) {
+    _init: function(settings, monitorIndex) {
         this._maxHeight = -1;
         this.iconSize = 64;
         this._availableIconSizes = baseIconSizes;
         this._shownInitially = false;
 
         this._dtdSettings = settings;
-        this._position = Convenience.getPosition(settings);
+        this._monitorIndex = monitorIndex;
+        this._position = Utils.getPosition(settings);
         this._isHorizontal = ((this._position == St.Side.TOP) ||
                                (this._position == St.Side.BOTTOM));
-        this._signalsHandler = new Convenience.GlobalSignalsHandler();
+        this._signalsHandler = new Utils.GlobalSignalsHandler();
 
         this._dragPlaceholder = null;
         this._dragPlaceholderPos = -1;
@@ -218,17 +220,18 @@ const MyDash = new Lang.Class({
         this._container.add_actor(this._scrollView);
         this._scrollView.add_actor(this._box);
 
-        this._showAppsIcon = new Dash.ShowAppsIcon();
-        AppIcons.extendShowAppsIcon(this._showAppsIcon, this._dtdSettings);
+        // Create a wrapper around the real showAppsIcon in order to add a popupMenu.
+        let showAppsIconWrapper = new AppIcons.ShowAppsIconWrapper(this._dtdSettings);
+        showAppsIconWrapper.connect('menu-state-changed', Lang.bind(this, function(showAppsIconWrapper, opened) {
+            this._itemMenuStateChanged(showAppsIconWrapper, opened);
+        }));
+        // an instance of the showAppsIcon class is encapsulated in the wrapper
+        this._showAppsIcon = showAppsIconWrapper.realShowAppsIcon;
+
         this._showAppsIcon.childScale = 1;
         this._showAppsIcon.childOpacity = 255;
         this._showAppsIcon.icon.setIconSize(this.iconSize);
         this._hookUpLabel(this._showAppsIcon);
-
-        let appsIcon = this._showAppsIcon;
-        appsIcon.connect('menu-state-changed', Lang.bind(this, function(appsIcon, opened) {
-            this._itemMenuStateChanged(appsIcon, opened);
-        }));
 
         this.showAppsButton = this._showAppsIcon.toggleButton;
 
@@ -447,7 +450,7 @@ const MyDash = new Lang.Class({
     },
 
     _createAppItem: function(app) {
-        let appIcon = new AppIcons.MyAppIcon(this._dtdSettings, app,
+        let appIcon = new AppIcons.MyAppIcon(this._dtdSettings, app, this._monitorIndex,
                                              { setSizeManually: true,
                                                showLabel: false });
         if (appIcon._draggable) {
@@ -610,6 +613,11 @@ const MyDash = new Lang.Class({
         if (this._maxHeight == -1)
             return;
 
+        // Check if the container is present in the stage. This avoids critical
+        // errors when unlocking the screen
+        if (!this._container.get_stage())
+            return;
+
         let themeNode = this._container.get_theme_node();
         let maxAllocation = new Clutter.ActorBox({
             x1: 0,
@@ -628,7 +636,7 @@ const MyDash = new Lang.Class({
         let firstButton = iconChildren[0].child;
         let firstIcon = firstButton._delegate.icon;
 
-        let minHeight, natHeight, maxWidth, natWidth;
+        let minHeight, natHeight, minWidth, natWidth;
 
         // Enforce the current icon size during the size request
         firstIcon.setIconSize(this.iconSize);
@@ -699,12 +707,14 @@ const MyDash = new Lang.Class({
         let favorites = AppFavorites.getAppFavorites().getFavoriteMap();
 
         let running = this._appSystem.get_running();
-        if (this._dtdSettings.get_boolean('isolate-workspaces')) {
+        if (this._dtdSettings.get_boolean('isolate-workspaces') ||
+            this._dtdSettings.get_boolean('isolate-monitors')) {
             // When using isolation, we filter out apps that have no windows in
             // the current workspace
             let settings = this._dtdSettings;
+            let monitorIndex = this._monitorIndex;
             running = running.filter(function(_app) {
-                return AppIcons.getInterestingWindows(_app, settings).length != 0;
+                return AppIcons.getInterestingWindows(_app, settings, monitorIndex).length != 0;
             });
         }
 
@@ -725,7 +735,20 @@ const MyDash = new Lang.Class({
                 newApps.push(favorites[id]);
         }
 
+        // We reorder the running apps so that they don't change position on the
+        // dash with every redisplay() call
         if (this._dtdSettings.get_boolean('show-running')) {
+            // First: add the apps from the oldApps list that are still running
+            for (let i = 0; i < oldApps.length; i++) {
+                let index = running.indexOf(oldApps[i]);
+                if (index > -1) {
+                    let app = running.splice(index, 1)[0];
+                    if (this._dtdSettings.get_boolean('show-favorites') && (app.get_id() in favorites))
+                        continue;
+                    newApps.push(app);
+                }
+            }
+            // Second: add the new apps
             for (let i = 0; i < running.length; i++) {
                 let app = running[i];
                 if (this._dtdSettings.get_boolean('show-favorites') && (app.get_id() in favorites))
@@ -758,7 +781,7 @@ const MyDash = new Lang.Class({
         let oldIndex = 0;
         while ((newIndex < newApps.length) || (oldIndex < oldApps.length)) {
             // No change at oldIndex/newIndex
-            if (oldApps[oldIndex] == newApps[newIndex]) {
+            if (oldApps[oldIndex] && oldApps[oldIndex] == newApps[newIndex]) {
                 oldIndex++;
                 newIndex++;
                 continue;
@@ -841,6 +864,37 @@ const MyDash = new Lang.Class({
 
         // This is required for icon reordering when the scrollview is used.
         this._updateAppsIconGeometry();
+
+        // This will update the size, and the corresponding number for each icon
+        this._updateNumberOverlay();
+    },
+
+    _updateNumberOverlay: function() {
+        let appIcons = this._getAppIcons();
+        let counter = 1;
+        appIcons.forEach(function(icon) {
+            if (counter < 10){
+                icon.setNumberOverlay(counter);
+                counter++;
+            }
+            else if (counter == 10) {
+                icon.setNumberOverlay(0);
+                counter++;
+            }
+            else {
+                // No overlay after 10
+                icon.setNumberOverlay(-1);
+            }
+            icon.updateNumberOverlay();
+        });
+
+    },
+
+    toggleNumberOverlay: function(activate) {
+        let appIcons = this._getAppIcons();
+        appIcons.forEach(function(icon) {
+            icon.toggleNumberOverlay(activate);
+        });
     },
 
     setIconSize: function(max_size, doNotAnimate) {

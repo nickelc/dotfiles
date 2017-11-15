@@ -10,7 +10,7 @@ const Main = imports.ui.main;
 const Signals = imports.signals;
 
 const Me = imports.misc.extensionUtils.getCurrentExtension();
-const Convenience = Me.imports.convenience;
+const Utils = Me.imports.utils;
 
 // A good compromise between reactivity and efficiency; to be tuned.
 const INTELLIHIDE_CHECK_INTERVAL = 100;
@@ -45,14 +45,15 @@ const handledWindowTypes = [
  * Intallihide object: emit 'status-changed' signal when the overlap of windows
  * with the provided targetBoxClutter.ActorBox changes;
  */
-const Intellihide = new Lang.Class({
+var Intellihide = new Lang.Class({
     Name: 'DashToDock.Intellihide',
 
-    _init: function(settings) {
+    _init: function(settings, monitorIndex) {
         // Load settings
         this._settings = settings;
+        this._monitorIndex = monitorIndex;
 
-        this._signalsHandler = new Convenience.GlobalSignalsHandler();
+        this._signalsHandler = new Utils.GlobalSignalsHandler();
         this._tracker = Shell.WindowTracker.get_default();
         this._focusApp = null; // The application whose window is focused.
         this._topApp = null; // The application whose window is on top on the monitor with the dock.
@@ -63,6 +64,8 @@ const Intellihide = new Lang.Class({
 
         this._checkOverlapTimeoutContinue = false;
         this._checkOverlapTimeoutId = 0;
+
+        this._trackedWindows = new Map();
 
         // Connect global signals
         this._signalsHandler.add([
@@ -101,17 +104,19 @@ const Intellihide = new Lang.Class({
     enable: function() {
         this._isEnabled = true;
         this._status = OverlapStatus.UNDEFINED;
-        global.get_window_actors().forEach(function(win) {
-            this._addWindowSignals(win.get_meta_window());
+        global.get_window_actors().forEach(function(wa) {
+            this._addWindowSignals(wa);
         }, this);
         this._doCheckOverlap();
     },
 
     disable: function() {
         this._isEnabled = false;
-        global.get_window_actors().forEach(function(win) {
-            this._removeWindowSignals(win.get_meta_window());
-        }, this);
+
+        for (let wa of this._trackedWindows.keys()) {
+            this._removeWindowSignals(wa);
+        }
+        this._trackedWindows.clear();
 
         if (this._checkOverlapTimeoutId > 0) {
             Mainloop.source_remove(this._checkOverlapTimeoutId);
@@ -119,29 +124,24 @@ const Intellihide = new Lang.Class({
         }
     },
 
-    _windowCreated: function(display, meta_win) {
-        this._addWindowSignals(meta_win);
+    _windowCreated: function(display, metaWindow) {
+        this._addWindowSignals(metaWindow.get_compositor_private());
     },
 
-    _addWindowSignals: function(meta_win) {
-        if (!meta_win || !this._handledWindow(meta_win))
+    _addWindowSignals: function(wa) {
+        if (!this._handledWindow(wa))
             return;
-
-        meta_win.dtd_onPositionChanged = meta_win.connect('position-changed', Lang.bind(this, this._checkOverlap, meta_win));
-
-        meta_win.dtd_onSizeChanged = meta_win.connect('size-changed', Lang.bind(this, this._checkOverlap, meta_win));
+        let signalId = wa.connect('allocation-changed', Lang.bind(this, this._checkOverlap, wa.get_meta_window()));
+        this._trackedWindows.set(wa, signalId);
+        wa.connect('destroy', Lang.bind(this, this._removeWindowSignals));
     },
 
-    _removeWindowSignals: function(meta_win) {
-        if (meta_win && meta_win.dtd_onSizeChanged) {
-           meta_win.disconnect(meta_win.dtd_onSizeChanged);
-           delete meta_win.dtd_onSizeChanged;
+    _removeWindowSignals: function(wa) {
+        if (this._trackedWindows.get(wa)) {
+           wa.disconnect(this._trackedWindows.get(wa));
+           this._trackedWindows.delete(wa);
         }
 
-        if (meta_win && meta_win.dtd_onPositionChanged) {
-           meta_win.disconnect(meta_win.dtd_onPositionChanged);
-           delete meta_win.dtd_onPositionChanged;
-        }
     },
 
     updateTargetBox: function(box) {
@@ -198,16 +198,10 @@ const Intellihide = new Lang.Class({
              * select a window in the secondary monitor.
              */
 
-            let monitorIndex = this._settings.get_int('preferred-monitor');
-
-            if ((monitorIndex < 0) || (monitorIndex > Main.layoutManager.monitors.length -1))
-
-                monitorIndex = Main.layoutManager.primaryIndex;
-
             let topWindow = null;
             for (let i = windows.length - 1; i >= 0; i--) {
                 let meta_win = windows[i].get_meta_window();
-                if (this._handledWindow(meta_win) && (meta_win.get_monitor() == monitorIndex)) {
+                if (this._handledWindow(windows[i]) && (meta_win.get_monitor() == this._monitorIndex)) {
                     topWindow = meta_win;
                     break;
                 }
@@ -252,7 +246,7 @@ const Intellihide = new Lang.Class({
     // Optionally skip windows of other applications
     _intellihideFilterInteresting: function(wa) {
         let meta_win = wa.get_meta_window();
-        if (!meta_win || !this._handledWindow(meta_win))
+        if (!this._handledWindow(wa))
             return false;
 
         let currentWorkspace = global.screen.get_active_workspace_index();
@@ -303,7 +297,12 @@ const Intellihide = new Lang.Class({
 
     // Filter windows by type
     // inspired by Opacify@gnome-shell.localdomain.pl
-    _handledWindow: function(metaWindow) {
+    _handledWindow: function(wa) {
+        let metaWindow = wa.get_meta_window();
+
+        if (!metaWindow)
+            return false;
+
         // The DropDownTerminal extension uses the POPUP_MENU window type hint
         // so we match its window by wm class instead
         if (metaWindow.get_wm_class() == 'DropDownTerminalWindow')

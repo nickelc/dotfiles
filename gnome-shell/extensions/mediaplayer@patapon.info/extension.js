@@ -20,7 +20,6 @@
 
 const Main = imports.ui.main;
 const Gettext = imports.gettext.domain('gnome-shell-extensions-mediaplayer');
-
 const Me = imports.misc.extensionUtils.getCurrentExtension();
 const Lib = Me.imports.lib;
 const Manager = Me.imports.manager;
@@ -30,41 +29,55 @@ const Settings = Me.imports.settings;
 /* global values */
 let manager;
 let indicator;
+let _stockMpris;
+let _stockMprisOldShouldShow;
 
 function init() {
   Lib.initTranslations(Me);
+  Lib.addIcon(Me);
   Settings.init();
-  Settings.gsettings.connect("changed::" + Settings.MEDIAPLAYER_INDICATOR_POSITION_KEY, function() {
-    if (manager) {
-      disable();
-      enable();
-    }
-  });
+  if (Settings.MINOR_VERSION > 19) {
+    //Monkey patch
+    _stockMpris = Main.panel.statusArea.dateMenu._messageList._mediaSection;
+    _stockMprisOldShouldShow = _stockMpris._shouldShow;
+  }
+  Settings.gsettings.connect("changed::" + Settings.MEDIAPLAYER_INDICATOR_POSITION_KEY, function() {_reset()}); 
+}
+
+function _reset() {
+  if (manager) {
+    disable();
+    enable();
+  }
 }
 
 function enable() {
   let position = Settings.gsettings.get_enum(Settings.MEDIAPLAYER_INDICATOR_POSITION_KEY),
-      menu;
+      menu, desiredMenuPosition;
 
   if (position == Settings.IndicatorPosition.VOLUMEMENU) {
     indicator = new Panel.AggregateMenuIndicator();
     menu = Main.panel.statusArea.aggregateMenu.menu;
+    desiredMenuPosition = Main.panel.statusArea.aggregateMenu.menu._getMenuItems().indexOf(Main.panel.statusArea.aggregateMenu._rfkill.menu);
   }
   else {
     indicator = new Panel.PanelIndicator();
     menu = indicator.menu;
+    desiredMenuPosition = 0;
   }
 
-  manager = new Manager.PlayerManager(menu);
-
-  if (position == Settings.IndicatorPosition.RIGHT) {
+  manager = new Manager.PlayerManager(menu, desiredMenuPosition);
+  if (position == Settings.IndicatorPosition.LEFT) {
+    Main.panel.addToStatusArea('mediaplayer', indicator, 999, 'left');
+  }
+  else if (position == Settings.IndicatorPosition.RIGHT) {
     Main.panel.addToStatusArea('mediaplayer', indicator);
   }
   else if (position == Settings.IndicatorPosition.CENTER) {
     Main.panel.addToStatusArea('mediaplayer', indicator, 999, 'center');
   }
   else {
-    Main.panel.statusArea.aggregateMenu._indicators.insert_child_at_index(indicator.indicators, 0);
+    Main.panel.statusArea.aggregateMenu._indicators.insert_child_below(indicator.indicators, Main.panel.statusArea.aggregateMenu._screencast.indicators);
   }
 
   indicator.manager = manager;
@@ -75,10 +88,16 @@ function disable() {
   manager = null;
   if (indicator instanceof Panel.PanelIndicator) {
     indicator.destroy();
-    indicator = null;
   }
   else {
     indicator.indicators.destroy();
-    indicator = null;
+  }
+  indicator = null;
+  if (Settings.MINOR_VERSION > 19) {
+    //Revert Monkey patch
+    _stockMpris._shouldShow = _stockMprisOldShouldShow;
+    if (_stockMpris._shouldShow()) {
+      _stockMpris.actor.show();
+    }
   }
 }

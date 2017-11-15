@@ -23,16 +23,17 @@ const Util = imports.misc.util;
 const Workspace = imports.ui.workspace;
 
 const Me = imports.misc.extensionUtils.getCurrentExtension();
-const Convenience = Me.imports.convenience;
+const Utils = Me.imports.utils;
 
 /**
  * Manage theme customization and custom theme support
  */
-const ThemeManager = new Lang.Class({
+var ThemeManager = new Lang.Class({
     Name: 'DashToDock.ThemeManager',
 
     _init: function(settings, actor, dash) {
         this._settings = settings;
+        this._signalsHandler = new Utils.GlobalSignalsHandler();
         this._bindSettingsChanges();
         this._actor = actor;
         this._dash = dash;
@@ -41,7 +42,6 @@ const ThemeManager = new Lang.Class({
         this._customizedBackground = {red: 0, green: 0, blue: 0, alpha: 0};
         this._customizedBorder = {red: 0, green: 0, blue: 0, alpha: 0};
 
-        this._signalsHandler = new Convenience.GlobalSignalsHandler();
         this._signalsHandler.add([
             // When theme changes re-obtain default background color
             St.ThemeContext.get_for_stage (global.stage),
@@ -59,6 +59,10 @@ const ThemeManager = new Lang.Class({
         ]);
 
         this._updateCustomStyleClasses();
+
+        // destroy themeManager when the managed actor is destroyed (e.g. extension unload)
+        // in order to disconnect signals
+        this._actor.connect('destroy', Lang.bind(this, this.destroy));
 
     },
 
@@ -124,7 +128,7 @@ const ThemeManager = new Lang.Class({
         // We want to find the inside border-color of the dock because it is
         // the side most visible to the user. We do this by finding the side
         // opposite the position
-        let position = Convenience.getPosition(this._settings);
+        let position = Utils.getPosition(this._settings);
         let side = position + 2;
         if (side > 3)
             side = Math.abs(side - 4);
@@ -171,6 +175,16 @@ const ThemeManager = new Lang.Class({
             this._actor.add_style_class_name('running-dots');
         else
             this._actor.remove_style_class_name('running-dots');
+
+        // If not the built-in theme option is not selected
+        if (!this._settings.get_boolean('apply-custom-theme')) {
+            if (this._settings.get_boolean('force-straight-corner'))
+                this._actor.add_style_class_name('straight-corner');
+            else 
+                this._actor.remove_style_class_name('straight-corner');
+        } else {
+            this._actor.remove_style_class_name('straight-corner');
+        }
     },
 
     updateCustomTheme: function() {
@@ -198,7 +212,7 @@ const ThemeManager = new Lang.Class({
             return;
 
         let newStyle = '';
-        let position = Convenience.getPosition(this._settings);
+        let position = Utils.getPosition(this._settings);
 
         if (!this._settings.get_boolean('custom-theme-shrink')) {
             // obtain theme border settings
@@ -265,10 +279,15 @@ const ThemeManager = new Lang.Class({
                     'apply-custom-theme',
                     'custom-theme-shrink',
                     'custom-theme-running-dots',
-                    'extend-height'];
+                    'extend-height',
+                    'force-straight-corner'];
 
         keys.forEach(function(key) {
-            this._settings.connect('changed::' + key, Lang.bind(this, this.updateCustomTheme));
+            this._signalsHandler.add([
+                this._settings,
+                'changed::' + key,
+                Lang.bind(this, this.updateCustomTheme)
+           ]);
         }, this);
     }
 });

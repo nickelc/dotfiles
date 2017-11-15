@@ -8,9 +8,11 @@ const Gdk = imports.gi.Gdk;
 const Lang = imports.lang;
 const Mainloop = imports.mainloop;
 
+// Use __ () and N__() for the extension gettext domain, and reuse
+// the shell domain with the default _() and N_()
 const Gettext = imports.gettext.domain('dashtodock');
-const _ = Gettext.gettext;
-const N_ = function(e) { return e };
+const __ = Gettext.gettext;
+const N__ = function(e) { return e };
 
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
@@ -49,6 +51,19 @@ function cssHexString(css) {
         css = css.slice(end);
     }
     return rrggbb;
+}
+
+function setShortcut(settings) {
+    let shortcut_text = settings.get_string('shortcut-text');
+    let [key, mods] = Gtk.accelerator_parse(shortcut_text);
+
+    if (Gtk.accelerator_valid(key, mods)) {
+        let shortcut = Gtk.accelerator_name(key, mods);
+        settings.set_strv('shortcut', [shortcut]);
+    }
+    else {
+        settings.set_strv('shortcut', []);
+    }
 }
 
 const Settings = new Lang.Class({
@@ -95,7 +110,7 @@ const Settings = new Lang.Class({
         let monitor = this._settings.get_int('preferred-monitor');
 
         // Add primary monitor with index 0, because in GNOME Shell the primary monitor is always 0
-        this._builder.get_object('dock_monitor_combo').append_text(_('Primary monitor'));
+        this._builder.get_object('dock_monitor_combo').append_text(__('Primary monitor'));
         this._monitors.push(0);
 
         // Add connected monitors
@@ -104,14 +119,14 @@ const Settings = new Lang.Class({
             if (i !== primary_monitor) {
                 ctr++;
                 this._monitors.push(ctr);
-                this._builder.get_object('dock_monitor_combo').append_text(_('Secondary monitor ') + ctr);
+                this._builder.get_object('dock_monitor_combo').append_text(__('Secondary monitor ') + ctr);
             }
         }
 
         // If one of the external monitor is set as preferred, show it even if not attached
         if ((monitor >= n_monitors) && (monitor !== primary_monitor)) {
             this._monitors.push(monitor)
-            this._builder.get_object('dock_monitor_combo').append_text(_('Secondary monitor ') + ++ctr);
+            this._builder.get_object('dock_monitor_combo').append_text(__('Secondary monitor ') + ++ctr);
         }
 
         this._builder.get_object('dock_monitor_combo').set_active(this._monitors.indexOf(monitor));
@@ -136,8 +151,8 @@ const Settings = new Lang.Class({
 
         if (this._rtl) {
             /* Left is Right in rtl as a setting */
-            this._builder.get_object('position_left_button').set_label(_('Right'));
-            this._builder.get_object('position_right_button').set_label(_('Left'));
+            this._builder.get_object('position_left_button').set_label(__('Right'));
+            this._builder.get_object('position_right_button').set_label(__('Left'));
         }
 
         // Intelligent autohide options
@@ -187,14 +202,14 @@ const Settings = new Lang.Class({
         // Create dialog for intelligent autohide advanced settings
         this._builder.get_object('intelligent_autohide_button').connect('clicked', Lang.bind(this, function() {
 
-            let dialog = new Gtk.Dialog({ title: _('Intelligent autohide customization'),
+            let dialog = new Gtk.Dialog({ title: __('Intelligent autohide customization'),
                                           transient_for: this.widget.get_toplevel(),
                                           use_header_bar: true,
                                           modal: true });
 
             // GTK+ leaves positive values for application-defined response ids.
             // Use +1 for the reset action
-            dialog.add_button(_('Reset to defaults'), 1);
+            dialog.add_button(__('Reset to defaults'), 1);
 
             let box = this._builder.get_object('intelligent_autohide_advanced_settings_box');
             dialog.get_content_area().add(box);
@@ -289,7 +304,7 @@ const Settings = new Lang.Class({
         this._settings.bind('extend-height', this._builder.get_object('dock_size_scale'), 'sensitive', Gio.SettingsBindFlags.INVERT_BOOLEAN);
 
 
-        // Behavior panel
+        // Apps panel
 
         this._settings.bind('show-running',
                             this._builder.get_object('show_running_switch'),
@@ -297,6 +312,18 @@ const Settings = new Lang.Class({
                             Gio.SettingsBindFlags.DEFAULT);
         this._settings.bind('isolate-workspaces',
                             this._builder.get_object('application_button_isolation_button'),
+                            'active',
+                            Gio.SettingsBindFlags.DEFAULT);
+        this._settings.bind('isolate-monitors',
+                            this._builder.get_object('application_button_monitor_isolation_button'),
+                            'active',
+                            Gio.SettingsBindFlags.DEFAULT);
+        this._settings.bind('show-windows-preview',
+                            this._builder.get_object('windows_preview_button'),
+                            'active',
+                            Gio.SettingsBindFlags.DEFAULT);
+        this._settings.bind('multi-monitor',
+                            this._builder.get_object('multi_monitor_button'),
                             'active',
                             Gio.SettingsBindFlags.DEFAULT);
         this._settings.bind('show-favorites',
@@ -324,9 +351,26 @@ const Settings = new Lang.Class({
                             'sensitive',
                             Gio.SettingsBindFlags.DEFAULT);
 
+
+        // Behavior panel
+
+        this._settings.bind('hot-keys',
+                            this._builder.get_object('hot_keys_switch'),
+                            'active',
+                            Gio.SettingsBindFlags.DEFAULT);
+        this._settings.bind('hot-keys',
+                            this._builder.get_object('overlay_button'),
+                            'sensitive',
+                            Gio.SettingsBindFlags.DEFAULT);
+
         this._builder.get_object('click_action_combo').set_active(this._settings.get_enum('click-action'));
         this._builder.get_object('click_action_combo').connect('changed', Lang.bind (this, function(widget) {
             this._settings.set_enum('click-action', widget.get_active());
+        }));
+
+        this._builder.get_object('scroll_action_combo').set_active(this._settings.get_enum('scroll-action'));
+        this._builder.get_object('scroll_action_combo').connect('changed', Lang.bind (this, function(widget) {
+            this._settings.set_enum('scroll-action', widget.get_active());
         }));
 
         this._builder.get_object('shift_click_action_combo').connect('changed', Lang.bind (this, function(widget) {
@@ -340,17 +384,74 @@ const Settings = new Lang.Class({
             this._settings.set_enum('shift-middle-click-action', widget.get_active());
         }));
 
-        // Create dialog for middle-click options
-        this._builder.get_object('middle_click_options_button').connect('clicked', Lang.bind(this, function() {
+        // Create dialog for number overlay options
+        this._builder.get_object('overlay_button').connect('clicked', Lang.bind(this, function() {
 
-            let dialog = new Gtk.Dialog({ title: _('Customize middle-click behavior'),
+            let dialog = new Gtk.Dialog({ title: __('Show dock and application numbers'),
                                           transient_for: this.widget.get_toplevel(),
                                           use_header_bar: true,
                                           modal: true });
 
             // GTK+ leaves positive values for application-defined response ids.
             // Use +1 for the reset action
-            dialog.add_button(_('Reset to defaults'), 1);
+            dialog.add_button(__('Reset to defaults'), 1);
+
+            let box = this._builder.get_object('box_overlay_shortcut');
+            dialog.get_content_area().add(box);
+
+            this._builder.get_object('overlay_switch').set_active(this._settings.get_boolean('hotkeys-overlay'));
+            this._builder.get_object('show_dock_switch').set_active(this._settings.get_boolean('hotkeys-show-dock'));
+
+            // We need to update the shortcut 'strv' when the text is modified
+            this._settings.connect('changed::shortcut-text', Lang.bind(this, function() {setShortcut(this._settings);}));
+            this._settings.bind('shortcut-text',
+                                this._builder.get_object('shortcut_entry'),
+                                'text',
+                                Gio.SettingsBindFlags.DEFAULT);
+
+            this._settings.bind('hotkeys-overlay',
+                                this._builder.get_object('overlay_switch'),
+                                'active',
+                                Gio.SettingsBindFlags.DEFAULT);
+            this._settings.bind('hotkeys-show-dock',
+                                this._builder.get_object('show_dock_switch'),
+                                'active',
+                                Gio.SettingsBindFlags.DEFAULT);
+            this._settings.bind('shortcut-timeout',
+                                this._builder.get_object('timeout_spinbutton'),
+                                'value',
+                                Gio.SettingsBindFlags.DEFAULT);
+
+            dialog.connect('response', Lang.bind(this, function(dialog, id) {
+                if (id == 1) {
+                    // restore default settings for the relevant keys
+                    let keys = ['shortcut-text', 'hotkeys-overlay', 'hotkeys-show-dock', 'shortcut-timeout'];
+                    keys.forEach(function(val) {
+                        this._settings.set_value(val, this._settings.get_default_value(val));
+                    }, this);
+                } else {
+                    // remove the settings box so it doesn't get destroyed;
+                    dialog.get_content_area().remove(box);
+                    dialog.destroy();
+                }
+                return;
+            }));
+
+            dialog.show_all();
+
+        }));
+
+        // Create dialog for middle-click options
+        this._builder.get_object('middle_click_options_button').connect('clicked', Lang.bind(this, function() {
+
+            let dialog = new Gtk.Dialog({ title: __('Customize middle-click behavior'),
+                                          transient_for: this.widget.get_toplevel(),
+                                          use_header_bar: true,
+                                          modal: true });
+
+            // GTK+ leaves positive values for application-defined response ids.
+            // Use +1 for the reset action
+            dialog.add_button(__('Reset to defaults'), 1);
 
             let box = this._builder.get_object('box_middle_click_options');
             dialog.get_content_area().add(box);
@@ -396,8 +497,6 @@ const Settings = new Lang.Class({
 
         }));
 
-        this._settings.bind('scroll-switch-workspace', this._builder.get_object('switch_workspace_switch'), 'active', Gio.SettingsBindFlags.DEFAULT);
-
         // Appearance Panel
 
         this._settings.bind('apply-custom-theme', this._builder.get_object('customize_theme'), 'sensitive', Gio.SettingsBindFlags.INVERT_BOOLEAN | Gio.SettingsBindFlags.GET);
@@ -416,7 +515,7 @@ const Settings = new Lang.Class({
         // Create dialog for running dots advanced settings
         this._builder.get_object('running_dots_advance_settings_button').connect('clicked', Lang.bind(this, function() {
 
-            let dialog = new Gtk.Dialog({ title: _('Customize running indicators'),
+            let dialog = new Gtk.Dialog({ title: __('Customize running indicators'),
                                           transient_for: this.widget.get_toplevel(),
                                           use_header_bar: true,
                                           modal: true });
@@ -487,6 +586,15 @@ const Settings = new Lang.Class({
         this._settings.bind('opaque-background', this._builder.get_object('customize_opacity_switch'), 'active', Gio.SettingsBindFlags.DEFAULT);
         this._builder.get_object('custom_opacity_scale').set_value(this._settings.get_double('background-opacity'));
         this._settings.bind('opaque-background', this._builder.get_object('custom_opacity'), 'sensitive', Gio.SettingsBindFlags.DEFAULT);
+
+        this._settings.bind('unity-backlit-items',
+            this._builder.get_object('unity_backlit_items_switch'),
+            'active', Gio.SettingsBindFlags.DEFAULT
+        );
+
+        this._settings.bind('force-straight-corner',
+            this._builder.get_object('force_straight_corner_switch'),
+            'active', Gio.SettingsBindFlags.DEFAULT);
 
         // About Panel
 

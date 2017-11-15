@@ -21,7 +21,6 @@
 const Mainloop = imports.mainloop;
 const Lang = imports.lang;
 const Signals = imports.signals;
-const Config = imports.misc.config;
 
 const Me = imports.misc.extensionUtils.getCurrentExtension();
 const Panel = Me.imports.panel;
@@ -31,15 +30,32 @@ const DBusIface = Me.imports.dbus;
 const UI = Me.imports.ui;
 
 
-const PlayerManager = new Lang.Class({
+var PlayerManager = new Lang.Class({
     Name: 'PlayerManager',
 
-    _init: function(menu) {
+    _init: function(menu, desiredMenuPosition) {
         this._disabling = false;
         // the menu
         this.menu = menu;
+        this._settings = Settings.gsettings;
+        this.desiredMenuPosition = desiredMenuPosition;
+        this.menu.connect('open-state-changed', Lang.bind(this, function(menu, open) {
+          let keepActiveOpen = this._settings.get_boolean(Settings.MEDIAPLAYER_KEEP_ACTIVE_OPEN_KEY);
+          if (open && keepActiveOpen) {
+            this.showActivePlayer();
+          }
+        }));
+        this._settingChangeId = this._settings.connect("changed::" + Settings.MEDIAPLAYER_KEEP_ACTIVE_OPEN_KEY, Lang.bind(this, function(settings, key) {
+          if (settings.get_boolean(key)) {
+            this.showActivePlayer();
+          }
+          else {
+            this.closeAllPlayers();
+          }
+        }));
         // players list
         this._players = {};
+        this._addPlayerTimeOutIds = {};
         // player shown in the panel
         this._activePlayer = null;
         this._activePlayerId = null;
@@ -48,43 +64,42 @@ const PlayerManager = new Lang.Class({
         // player DBus name pattern
         let name_regex = /^org\.mpris\.MediaPlayer2\./;
         // load players
-        this._dbus.ListNamesRemote(Lang.bind(this,
-            function(names) {
-                for (let n in names[0]) {
-                    let name = names[0][n];
-                    if (name_regex.test(name)) {
-                        this._dbus.GetNameOwnerRemote(name, Lang.bind(this,
-                            function(owner) {
-                                if (!this._disabling)
-                                    this._addPlayer(name, owner);
-                            }
-                        ));
-                    }
-                }
+        this._dbus.ListNamesRemote(Lang.bind(this, function(names) {
+          let playerNames = [];
+          for (let n in names[0]) {
+            let name = names[0][n];
+            if (name_regex.test(name)) {
+              playerNames.push(name);
             }
-        ));
+          }
+          playerNames.sort();
+          for (let i in playerNames) {
+            let player = playerNames[i];
+            this._dbus.GetNameOwnerRemote(player, Lang.bind(this, function(owner) {
+              if (!this._disabling) {
+                this._addPlayer(player, owner);
+              }
+            }));
+          }
+        }));
         // watch players
         this._ownerChangedId = this._dbus.connectSignal('NameOwnerChanged', Lang.bind(this,
             function(proxy, sender, [name, old_owner, new_owner]) {
                 if (name_regex.test(name)) {
                     if (!this._disabling) {
-                        if (new_owner && !old_owner)
-                            this._addPlayer(name, new_owner);
-                        else if (old_owner && !new_owner)
+                        if (new_owner && !old_owner) {
+                          this._addPlayer(name, new_owner);
+                        }
+                        else if (old_owner && !new_owner) {
                             this._removePlayerFromMenu(name, old_owner);
-                        else
+                        }
+                        else {
                             this._changePlayerOwner(name, old_owner, new_owner);
+                        }
                     }
                 }
             }
         ));
-        this._signalsId = [];
-        this._signalsId.push(
-            Settings.gsettings.connect("changed::" + Settings.MEDIAPLAYER_RUN_DEFAULT, Lang.bind(this, function() {
-                this._hideOrDefaultPlayer();
-            }))
-        );
-        this._hideOrDefaultPlayer();
     },
 
     get activePlayer() {
@@ -110,12 +125,31 @@ const PlayerManager = new Lang.Class({
       this._activePlayer = player;
       this._activePlayerId = this._activePlayer.connect('player-update',
                                                         Lang.bind(this, this._onActivePlayerUpdate));
-      for (let owner in this._players) {
-        if (this._players[owner].player == player &&
-            this._players[owner].ui.menu)
-          this._players[owner].ui.menu.open();
+      let keepActiveOpen = this._settings.get_boolean(Settings.MEDIAPLAYER_KEEP_ACTIVE_OPEN_KEY);
+      if (keepActiveOpen) {
+        this.showActivePlayer();
       }
       this.emit('player-active-update', player.state);
+    },
+
+    showActivePlayer: function() {
+      if (!this._activePlayer || !this.menu.actor.visible) {
+        return;
+      }
+      for (let owner in this._players) {
+        if (this._players[owner].player == this._activePlayer && this._players[owner].ui.menu) {
+          this._players[owner].ui.menu.open();
+          break;
+        }
+      }
+    },
+
+    closeAllPlayers: function() {
+      for (let owner in this._players) {
+        if (this._players[owner].ui.menu) {
+          this._players[owner].ui.menu.close();
+        }
+      }
     },
 
     nbPlayers: function() {
@@ -154,56 +188,44 @@ const PlayerManager = new Lang.Class({
     },
 
     _addPlayer: function(busName, owner) {
-        let position;
-        if (this._players[owner]) {
-            let prevName = this._players[owner].player.busName;
-            // HAVE:       ADDING:     ACTION:
-            // master      master      reject, cannot happen
-            // master      instance    upgrade to instance
-            // instance    master      reject, duplicate
-            // instance    instance    reject, cannot happen
-            if (this._isInstance(busName) && !this._isInstance(prevName))
-                this._players[owner].player.busName = busName;
-            else
-                return;
-        }
-        else if (owner) {
-            let player = new Player.MPRISPlayer(busName, owner);
-            let ui = new UI.PlayerUI(player);
-            this._players[owner] = {
-              player: player,
-              ui: ui,
-              signals: [],
-              signalsUI: []
-            };
-
-            this._players[owner].signals.push(
-                this._players[owner].player.connect('player-update',
-                    Lang.bind(this, this._onPlayerUpdate)
-                )
-            );
-            this._players[owner].signals.push(
-                this._players[owner].player.connect('player-update-info',
-                    Lang.bind(this, this._onPlayerInfoUpdate)
-                )
-            );
-            this._players[owner].signalsUI.push(
-                /* Close all other players menu when a player menu is opened */
-                this._players[owner].ui.connect('player-menu-opened',
-                    Lang.bind(this, function(ui) {
-                      this._hideOtherPlayers(ui);
-                    })
-                )
-            );
-
-            // remove the default player
-            if (this._players[Settings.DEFAULT_PLAYER_OWNER])
-                this._removePlayerFromMenu(null, Settings.DEFAULT_PLAYER_OWNER);
-
-            this._addPlayerToMenu(owner);
-        }
-
-        this._hideOrDefaultPlayer();
+      // Give players 1 sec to populate their interfaces before actually adding them.
+      if (this._addPlayerTimeOutIds[busName] && this._addPlayerTimeOutIds[busName] !== 0) {
+        Mainloop.source_remove(this._addPlayerTimeOutIds[busName]);
+        this._addPlayerTimeOutIds[busName] = 0;
+      }
+      this._addPlayerTimeOutIds[busName] = Mainloop.timeout_add_seconds(1, Lang.bind(this, function() {
+          this._addPlayerTimeOutIds[busName] = 0;       
+          if (this._players[owner]) {
+              let prevName = this._players[owner].player.busName;
+              // HAVE:       ADDING:     ACTION:
+              // master      master      reject, cannot happen
+              // master      instance    upgrade to instance
+              // instance    master      reject, duplicate
+              // instance    instance    reject, cannot happen
+              if (this._isInstance(busName) && !this._isInstance(prevName))
+                  this._players[owner].player.busName = busName;
+              else
+                  return false;
+          }
+          else if (owner) {
+              let player = new Player.MPRISPlayer(busName, owner);
+              let ui = new UI.PlayerUI(player);
+              this._players[owner] = {
+                player: player,
+                ui: ui,
+                signals: [],
+                signalsUI: []
+              };
+              if (this.nbPlayers() === 1) {
+                this.emit('connect-signals');
+              }
+              let playerItem = this._players[owner];
+              let playerUpdateId = playerItem.player.connect('player-update', Lang.bind(this, this._onPlayerUpdate));
+              playerItem.signals.push(playerUpdateId);
+              this._addPlayerToMenu(owner);
+          }
+          return false;
+      }));
     },
 
     _onPlayerUpdate: function(player, newState) {
@@ -215,48 +237,11 @@ const PlayerManager = new Lang.Class({
       this.emit('player-active-update', newState);
     },
 
-    _onPlayerInfoUpdate: function(player, playerInfo) {
-    },
-
-    _hideOtherPlayers: function(ui) {
-      for (let owner in this._players) {
-        if (this._players[owner].ui != ui)
-          this._players[owner].ui.menu.close(true, true);
-      }
-    },
-
-    _hideOrDefaultPlayer: function() {
-        if (this._disabling)
-            return;
-
-        if (this.nbPlayers() === 0 && Settings.gsettings.get_boolean(Settings.MEDIAPLAYER_RUN_DEFAULT)) {
-          if (!this._players[Settings.DEFAULT_PLAYER_OWNER]) {
-            let ui = new UI.DefaultPlayerUI();
-            this._players[Settings.DEFAULT_PLAYER_OWNER] = {ui: ui, signalsUI: [], signals: [], player: null};
-            this._addPlayerToMenu(Settings.DEFAULT_PLAYER_OWNER);
-          }
-        }
-        else if (this.nbPlayers() > 1 && this._players[Settings.DEFAULT_PLAYER_OWNER]) {
-            this._removePlayerFromMenu(null, Settings.DEFAULT_PLAYER_OWNER);
-        }
-    },
-
-    _getPlayerPosition: function() {
-      let position = 0;
-      if (Settings.gsettings.get_enum(Settings.MEDIAPLAYER_INDICATOR_POSITION_KEY) ==
-            Settings.IndicatorPosition.VOLUMEMENU) {
-        if (parseInt(Config.PACKAGE_VERSION.split(".")[1]) < 18)
-          position = this.menu.numMenuItems - 2;
-        else
-          position = this.menu.numMenuItems - 1;
-      }
-      return position;
-    },
-
     _addPlayerToMenu: function(owner) {
-      let position = this._getPlayerPosition();
-      this.menu.addMenuItem(this._players[owner].ui, position);
-      this._refreshActivePlayer(this._players[owner].player);
+      let actualPos = this.desiredMenuPosition + this.nbPlayers();  
+      let playerItem = this._players[owner];
+      this.menu.addMenuItem(playerItem.ui, actualPos);
+      this._refreshActivePlayer(playerItem.player);
     },
 
     _getMenuItem: function(position) {
@@ -292,15 +277,16 @@ const PlayerManager = new Lang.Class({
                 this._players[owner].player.disconnect(this._players[owner].signals[id]);
             for (let id in this._players[owner].signalsUI)
                 this._players[owner].ui.disconnect(this._players[owner].signalsUI[id]);
-            let position = this._getPlayerMenuPosition(this._players[owner].ui);
             if (this._players[owner].ui)
               this._players[owner].ui.destroy();
             if (this._players[owner].player)
               this._players[owner].player.destroy();
             delete this._players[owner];
-            this._hideOrDefaultPlayer();
         }
         this._refreshActivePlayer(null);
+        if (this.nbPlayers() === 0) {
+          this.emit('disconnect-signals');
+       }
     },
 
     _changePlayerOwner: function(busName, oldOwner, newOwner) {
@@ -332,12 +318,18 @@ const PlayerManager = new Lang.Class({
 
     destroy: function() {
         this._disabling = true;
+        this._settings.disconnect(this._settingChangeId);
         if (this._ownerChangedId)
             this._dbus.disconnectSignal(this._ownerChangedId);
-        for (let id in this._signalsId)
-            Settings.gsettings.disconnect(this._signalsId[id]);
         for (let owner in this._players)
             this._removePlayerFromMenu(null, owner);
+        // Cancel all pending timeouts. Wouldn't want to try to add a player if we're disabled.
+        for (let busName in this._addPlayerTimeOutIds) {
+            if (this._addPlayerTimeOutIds[busName] !== 0) {
+                Mainloop.source_remove(this._addPlayerTimeOutIds[busName]);
+                this._addPlayerTimeOutIds[busName] = 0;
+            }
+        }
     }
 });
 Signals.addSignalMethods(PlayerManager.prototype);

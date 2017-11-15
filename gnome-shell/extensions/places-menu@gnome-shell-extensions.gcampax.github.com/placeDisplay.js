@@ -12,6 +12,7 @@ const DND = imports.ui.dnd;
 const Main = imports.ui.main;
 const Params = imports.misc.params;
 const Search = imports.ui.search;
+const ShellMountOperation = imports.ui.shellMountOperation;
 const Util = imports.misc.util;
 
 const Gettext = imports.gettext.domain('gnome-shell-extensions');
@@ -44,41 +45,76 @@ const PlaceInfo = new Lang.Class({
         return false;
     },
 
-    launch: function(timestamp) {
-        let launchContext = global.create_app_launch_context(timestamp, -1);
+    _createLaunchCallback: function(launchContext, tryMount) {
+        return (_ignored, result) => {
+            try {
+                Gio.AppInfo.launch_default_for_uri_finish(result);
+            } catch(e if e.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.NOT_MOUNTED)) {
+                let source = {
+                    get_icon: () => { return this.icon; }
+                };
+                let op = new ShellMountOperation.ShellMountOperation(source);
+                this.file.mount_enclosing_volume(0, op.mountOp, null, (file, result) => {
+                    try {
+                        op.close();
+                        file.mount_enclosing_volume_finish(result);
+                    } catch(e if e.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.FAILED_HANDLED)) {
+                        // e.g. user canceled the password dialog
+                        return;
+                    } catch(e) {
+                        Main.notifyError(_("Failed to mount volume for “%s”").format(this.name), e.message);
+                        return;
+                    }
 
-        try {
-            Gio.AppInfo.launch_default_for_uri(this.file.get_uri(),
-                                               launchContext);
-        } catch(e if e.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.NOT_MOUNTED)) {
-            this.file.mount_enclosing_volume(0, null, null, function(file, result) {
-                file.mount_enclosing_volume_finish(result);
-                Gio.AppInfo.launch_default_for_uri(file.get_uri(), launchContext);
-            });
-        } catch(e) {
-            Main.notifyError(_("Failed to launch \"%s\"").format(this.name), e.message);
+                    if (tryMount) {
+                        let callback = this._createLaunchCallback(launchContext, false);
+                        Gio.AppInfo.launch_default_for_uri_async(file.get_uri(),
+                                                                 launchContext,
+                                                                 null,
+                                                                 callback);
+                    }
+                });
+            } catch(e) {
+                Main.notifyError(_("Failed to launch “%s”").format(this.name), e.message);
+            }
         }
     },
 
+    launch: function(timestamp) {
+        let launchContext = global.create_app_launch_context(timestamp, -1);
+        let callback = this._createLaunchCallback(launchContext, true);
+        Gio.AppInfo.launch_default_for_uri_async(this.file.get_uri(),
+                                                 launchContext,
+                                                 null,
+                                                 callback);
+    },
+
     getIcon: function() {
-        try {
-            let info = this.file.query_info('standard::symbolic-icon', 0, null);
-	    return info.get_symbolic_icon();
-        } catch(e if e instanceof Gio.IOErrorEnum) {
-            // return a generic icon for this kind
-            switch (this.kind) {
-            case 'network':
+        this.file.query_info_async('standard::symbolic-icon', 0, 0, null,
+                                   Lang.bind(this, function(file, result) {
+                                       try {
+                                           let info = file.query_info_finish(result);
+                                           this.icon = info.get_symbolic_icon();
+                                           this.emit('changed');
+                                       } catch(e if e instanceof Gio.IOErrorEnum) {
+                                           return;
+                                       }
+                                   }));
+
+        // return a generic icon for this kind for now, until we have the
+        // icon from the query info above
+        switch (this.kind) {
+        case 'network':
+            return new Gio.ThemedIcon({ name: 'folder-remote-symbolic' });
+        case 'devices':
+            return new Gio.ThemedIcon({ name: 'drive-harddisk-symbolic' });
+        case 'special':
+        case 'bookmarks':
+        default:
+            if (!this.file.is_native())
                 return new Gio.ThemedIcon({ name: 'folder-remote-symbolic' });
-            case 'devices':
-                return new Gio.ThemedIcon({ name: 'drive-harddisk-symbolic' });
-            case 'special':
-            case 'bookmarks':
-            default:
-                if (!this.file.is_native())
-                    return new Gio.ThemedIcon({ name: 'folder-remote-symbolic' });
-                else
-                    return new Gio.ThemedIcon({ name: 'folder-symbolic' });
-            }
+            else
+                return new Gio.ThemedIcon({ name: 'folder-symbolic' });
         }
     },
 
@@ -184,7 +220,7 @@ const DEFAULT_DIRECTORIES = [
     GLib.UserDirectory.DIRECTORY_VIDEOS,
 ];
 
-const PlacesManager = new Lang.Class({
+var PlacesManager = new Lang.Class({
     Name: 'PlacesManager',
 
     _init: function() {

@@ -25,6 +25,7 @@ const LayoutManager = imports.ui.main.layoutManager;
 
 const Me = imports.misc.extensionUtils.getCurrentExtension();
 const Convenience = Me.imports.convenience;
+const Utils = Me.imports.utils;
 const Intellihide = Me.imports.intellihide;
 const Theming = Me.imports.theming;
 const MyDash = Me.imports.dash;
@@ -36,6 +37,12 @@ const State = {
     SHOWING: 1,
     SHOWN:   2,
     HIDING:  3
+};
+
+const scrollAction = {
+    DO_NOTHING: 0,
+    CYCLE_WINDOWS: 1,
+    SWITCH_WORKSPACE: 2
 };
 
 /**
@@ -184,14 +191,18 @@ const DashSlideContainer = new Lang.Class({
 const DockedDash = new Lang.Class({
     Name: 'DashToDock.DockedDash',
 
-    _init: function(settings) {
+    _init: function(settings, monitorIndex) {
         this._rtl = (Clutter.get_default_text_direction() == Clutter.TextDirection.RTL);
 
         // Load settings
         this._settings = settings;
+        this._monitorIndex = monitorIndex;
+        // Connect global signals
+        this._signalsHandler = new Utils.GlobalSignalsHandler();
+
         this._bindSettingsChanges();
 
-        this._position = Convenience.getPosition(settings);
+        this._position = Utils.getPosition(settings);
         this._isHorizontal = ((this._position == St.Side.TOP) || (this._position == St.Side.BOTTOM));
 
         // Temporary ignore hover events linked to autohide for whatever reason
@@ -204,18 +215,13 @@ const DockedDash = new Lang.Class({
         this._fixedIsEnabled = null;
 
         // Create intellihide object to monitor windows overlapping
-        this._intellihide = new Intellihide.Intellihide(this._settings);
+        this._intellihide = new Intellihide.Intellihide(this._settings, this._monitorIndex);
 
         // initialize dock state
         this._dockState = State.HIDDEN;
 
-        /* status variable: true when the overview is shown through the dash
-         * applications button.
-         */
-        this.forcedOverview = false;
-
-        // Put dock on the primary monitor
-        this._monitor = Main.layoutManager.primaryMonitor;
+        // Put dock on the required monitor
+        this._monitor = Main.layoutManager.monitors[this._monitorIndex];
 
         // this store size and the position where the dash is shown;
         // used by intellihide module to check window overlap.
@@ -234,13 +240,7 @@ const DockedDash = new Lang.Class({
         this._dockDwellTimeoutId = 0
 
         // Create a new dash object
-        this.dash = new MyDash.MyDash(this._settings);
-
-        // set stored icon size  to the new dash
-        Main.overview.dashIconSize = this.dash.iconSize;
-
-        // connect app icon into the view selector
-        this.dash.showAppsButton.connect('notify::checked', Lang.bind(this, this._onShowAppsButtonToggled));
+        this.dash = new MyDash.MyDash(this._settings, this._monitorIndex);
 
         if (!this._settings.get_boolean('show-show-apps-button'))
             this.dash.hideShowAppsButton();
@@ -280,8 +280,6 @@ const DockedDash = new Lang.Class({
         });
         this.dash.actor.add_constraint(this.constrainSize);
 
-        // Connect global signals
-        this._signalsHandler = new Convenience.GlobalSignalsHandler();
         this._signalsHandler.add([
             Main.overview,
             'item-drag-begin',
@@ -294,11 +292,6 @@ const DockedDash = new Lang.Class({
             Main.overview,
             'item-drag-cancelled',
             Lang.bind(this, this._onDragEnd)
-        ], [
-            // update when monitor changes, for instance in multimonitor when monitor are attached
-            global.screen,
-            'monitors-changed',
-            Lang.bind(this, this._resetPosition )
         ], [
             // update when workarea changes, for instance if  other extensions modify the struts
             //(like moving th panel at the bottom)
@@ -328,6 +321,10 @@ const DockedDash = new Lang.Class({
             'notify::checked',
             Lang.bind(this, this._syncShowAppsButtonToggled)
         ], [
+            global.screen,
+            'in-fullscreen-changed',
+            Lang.bind(this, this._updateBarrier)
+        ], [
             // Monitor windows overlapping
             this._intellihide,
             'status-changed',
@@ -352,7 +349,7 @@ const DockedDash = new Lang.Class({
             })
         ]);
 
-        this._injectionsHandler = new Convenience.InjectionsHandler();
+        this._injectionsHandler = new Utils.InjectionsHandler();
         this._themeManager = new Theming.ThemeManager(this._settings, this.actor, this.dash);
 
         // Since the actor is not a topLevel child and its parent is now not added to the Chrome,
@@ -369,30 +366,16 @@ const DockedDash = new Lang.Class({
             this._box.sync_hover();
         }));
 
-        // Restore dash accessibility
-        Main.ctrlAltTabManager.addGroup(
-            this.dash.actor, _('Dash'), 'user-bookmarks-symbolic',
-                {focusCallback: Lang.bind(this, this._onAccessibilityFocus)});
-
-        // Load optional features
+        // Load optional features that need to be activated for one dock only
+        if (this._monitorIndex == this._settings.get_int('preferred-monitor'))
+            this._enableExtraFeatures();
+        // Load optional features that need to be activated once per dock
         this._optionalScrollWorkspaceSwitch();
-        this._optionalWorkspaceIsolation();
 
          // Delay operations that require the shell to be fully loaded and with
          // user theme applied.
 
         this._paintId = this.actor.connect('paint', Lang.bind(this, this._initialize));
-
-        // Hide usual Dash
-        Main.overview._controls.dash.actor.hide();
-
-        // Also set dash width to 1, so it's almost not taken into account by code
-        // calculaing the reserved space in the overview. The reason to keep it at 1 is
-        // to allow its visibility change to trigger an allocaion of the appGrid which
-        // in turn is triggergin the appsIcon spring animation, required when no other
-        // actors has this effect, i.e in horizontal mode and without the workspaceThumnails
-        // 1 static workspace only)
-        Main.overview._controls.dash.actor.set_width(1);
 
         // Manage the  which is used to reserve space in the overview for the dock
         // Add and additional dashSpacer positioned according to the dash positioning.
@@ -414,24 +397,20 @@ const DockedDash = new Lang.Class({
         this._slider.add_child(this._box);
         this._box.add_actor(this.dash.actor);
 
-        // Add aligning container without tracking it for input region (old affectsinputRegion: false that was removed).
-        // The public method trackChrome requires the actor to be child of a tracked actor. Since I don't want the parent
-        // to be tracked I use the private internal _trackActor instead.
+        // Add aligning container without tracking it for input region
         Main.uiGroup.add_child(this.actor);
 
-        if (this._settings.get_boolean('dock-fixed'))
-            Main.layoutManager._trackActor(this._slider.actor, {affectsStruts: true, trackFullscreen: true});
+        if (this._settings.get_boolean('dock-fixed')) {
+            // Note: tracking the fullscreen directly on the slider actor causes some hiccups when fullscreening
+            // windows of certain applications
+            Main.layoutManager._trackActor(this.actor, {affectsInputRegion: false, trackFullscreen: true});
+            Main.layoutManager._trackActor(this._slider.actor, {affectsStruts: true});
+        }
         else
             Main.layoutManager._trackActor(this._slider.actor);
 
-        // Keep the dash below the modalDialogGroup
-        Main.layoutManager.uiGroup.set_child_below_sibling(this.actor,Main.layoutManager.modalDialogGroup);
-
-        // pretend this._slider is isToplevel child so that fullscreen is actually tracked
-        let index = Main.layoutManager._findActor(this._slider.actor);
-        Main.layoutManager._trackedActors[index].isToplevel = true;
-
         // Set initial position
+        this._resetDepth();
         this._resetPosition();
     },
 
@@ -471,9 +450,10 @@ const DockedDash = new Lang.Class({
     destroy: function() {
         // Disconnect global signals
         this._signalsHandler.destroy();
-        // The dash and intellihide have global signals as well internally
+        // The dash, intellihide and themeManager have global signals as well internally
         this.dash.destroy();
         this._intellihide.destroy();
+        this._themeManager.destroy();
 
         this._injectionsHandler.destroy();
 
@@ -497,95 +477,129 @@ const DockedDash = new Lang.Class({
         // Remove the dashSpacer
         this._dashSpacer.destroy();
 
-        // Reshow normal dash previously hidden, restore panel position if changed.
-        Main.overview._controls.dash.actor.show();
-        Main.overview._controls.dash.actor.set_width(-1); //reset default dash size
-        // This force the recalculation of the icon size
-        Main.overview._controls.dash._maxHeight = -1;
-
-        // reset stored icon size  to the default dash
-        Main.overview.dashIconSize = Main.overview._controls.dash.iconSize;
-        // Reshow panel corners
-        this._revertPanelCorners();
+        // Restore legacyTray position
         this._resetLegacyTray();
+
     },
 
     _bindSettingsChanges: function() {
-        this._settings.connect('changed::scroll-switch-workspace', Lang.bind(this, function() {
-            this._optionalScrollWorkspaceSwitch(this._settings.get_boolean('scroll-switch-workspace'));
-        }));
+        this._signalsHandler.add([
+            this._settings,
+            'changed::scroll-action',
+            Lang.bind(this, function() {
+                    this._optionalScrollWorkspaceSwitch();
+            })
+        ], [
+            this._settings,
+            'changed::dash-max-icon-size',
+            Lang.bind(this, function() {
+                    this.dash.setIconSize(this._settings.get_int('dash-max-icon-size'));
+            })
+        ], [
+            this._settings,
+            'changed::icon-size-fixed',
+            Lang.bind(this, function() {
+                    this.dash.setIconSize(this._settings.get_int('dash-max-icon-size'));
+            })
+        ], [
+            this._settings,
+            'changed::show-favorites',
+            Lang.bind(this, function() {
+                    this.dash.resetAppIcons();
+            })
+        ], [
+            this._settings,
+            'changed::show-running',
+            Lang.bind(this, function() {
+                    this.dash.resetAppIcons();
+            })
+        ], [
+            this._settings,
+            'changed::show-apps-at-top',
+            Lang.bind(this, function() {
+                    this.dash.resetAppIcons();
+            })
+        ], [
+            this._settings,
+            'changed::show-show-apps-button',
+            Lang.bind(this, function() {
+                    if (this._settings.get_boolean('show-show-apps-button'))
+                        this.dash.showShowAppsButton();
+                    else
+                        this.dash.hideShowAppsButton();
+            })
+        ], [
+            this._settings,
+            'changed::dock-fixed',
+            Lang.bind(this, function() {
+                    if (this._settings.get_boolean('dock-fixed')) {
+                        Main.layoutManager._untrackActor(this.actor);
+                        Main.layoutManager._trackActor(this.actor, {affectsInputRegion: false, trackFullscreen: true});
+                        Main.layoutManager._untrackActor(this._slider.actor);
+                        Main.layoutManager._trackActor(this._slider.actor, {affectsStruts: true});
+                    } else {
+                        Main.layoutManager._untrackActor(this.actor);
+                        Main.layoutManager._untrackActor(this._slider.actor);
+                        Main.layoutManager._trackActor(this._slider.actor);
+                    }
 
-        this._settings.connect('changed::dash-max-icon-size', Lang.bind(this, function() {
-            this.dash.setIconSize(this._settings.get_int('dash-max-icon-size'));
-        }));
+                    this._resetPosition();
 
-        this._settings.connect('changed::icon-size-fixed', Lang.bind(this, function() {
-            this.dash.setIconSize(this._settings.get_int('dash-max-icon-size'));
-        }));
+                    // Add or remove barrier depending on if dock-fixed
+                    this._updateBarrier();
 
-        this._settings.connect('changed::show-favorites', Lang.bind(this, function() {
-            this.dash.resetAppIcons();
-        }));
-
-        this._settings.connect('changed::show-running', Lang.bind(this, function() {
-            this.dash.resetAppIcons();
-        }));
-
-        this._settings.connect('changed::show-apps-at-top', Lang.bind(this, function() {
-            this.dash.resetAppIcons();
-        }));
-
-        this._settings.connect('changed::show-show-apps-button', Lang.bind(this, function() {
-            if (this._settings.get_boolean('show-show-apps-button'))
-                this.dash.showShowAppsButton();
-            else
-                this.dash.hideShowAppsButton();
-        }));
-
-        this._settings.connect('changed::dock-fixed', Lang.bind(this, function() {
-
-            if (this._settings.get_boolean('dock-fixed')) {
-                Main.layoutManager._untrackActor(this._slider.actor);
-                Main.layoutManager._trackActor(this._slider.actor, {affectsStruts: true, trackFullscreen: true});
-            } else {
-                Main.layoutManager._untrackActor(this._slider.actor);
-                Main.layoutManager._trackActor(this._slider.actor);
-             }
-
-            this._resetPosition();
-
-            // Add or remove barrier depending on if dock-fixed
-            this._updateBarrier();
-
-            this._updateVisibilityMode();
-        }));
-
-        this._settings.connect('changed::intellihide', Lang.bind(this, this._updateVisibilityMode));
-
-        this._settings.connect('changed::intellihide-mode', Lang.bind(this, function() {
-            this._intellihide.forceUpdate();
-        }));
-
-        this._settings.connect('changed::autohide', Lang.bind(this, function() {
-            this._updateVisibilityMode();
-            this._updateBarrier();
-        }));
-        this._settings.connect('changed::extend-height', Lang.bind(this,this._resetPosition));
-        this._settings.connect('changed::preferred-monitor', Lang.bind(this,this._resetPosition));
-        this._settings.connect('changed::height-fraction', Lang.bind(this,this._resetPosition));
-        this._settings.connect('changed::require-pressure-to-show', Lang.bind(this,function() {
-            // Remove pointer watcher
-            if (this._dockWatch) {
-                PointerWatcher.getPointerWatcher()._removeWatch(this._dockWatch);
-                this._dockWatch = null;
-            }
-            this._setupDockDwellIfNeeded();
-            this._updateBarrier();
-        }));
-        this._settings.connect('changed::pressure-threshold', Lang.bind(this,function() {
-            this._updatePressureBarrier();
-            this._updateBarrier();
-        }));
+                    this._updateVisibilityMode();
+            })
+        ], [
+            this._settings,
+            'changed::intellihide',
+            Lang.bind(this, this._updateVisibilityMode)
+        ], [
+            this._settings,
+            'changed::intellihide-mode',
+            Lang.bind(this, function() {
+                    this._intellihide.forceUpdate();
+            })
+        ], [
+            this._settings,
+            'changed::autohide',
+            Lang.bind(this, function() {
+                    this._updateVisibilityMode();
+                    this._updateBarrier();
+            })
+        ], [
+            this._settings,
+            'changed::autohide-in-fullscreen',
+            Lang.bind(this, this._updateBarrier)
+        ],
+        [
+            this._settings,
+            'changed::extend-height',
+            Lang.bind(this, this._resetPosition)
+        ], [
+            this._settings,
+            'changed::height-fraction',
+            Lang.bind(this, this._resetPosition)
+        ], [
+            this._settings,
+            'changed::require-pressure-to-show',
+            Lang.bind(this, function() {
+                    // Remove pointer watcher
+                    if (this._dockWatch) {
+                        PointerWatcher.getPointerWatcher()._removeWatch(this._dockWatch);
+                        this._dockWatch = null;
+                    }
+                    this._setupDockDwellIfNeeded();
+                    this._updateBarrier();
+            })
+        ], [
+            this._settings,
+            'changed::pressure-threshold',
+            Lang.bind(this, function() {
+                    this._updatePressureBarrier();
+                    this._updateBarrier();
+            })
+        ]);
 
     },
 
@@ -761,22 +775,19 @@ const DockedDash = new Lang.Class({
     },
 
     _checkDockDwell: function(x, y) {
-        let monitor = this._monitor;
 
-        // Check for the dock area
-        let shouldDwell = (x >= this.staticBox.x1 && x <= this.staticBox.x2 &&
-                           y >= this.staticBox.y1  && y <= this.staticBox.y2);
-
-        // Check for the correct screen edge
-        // Position is approximated to the lower integer
+        let workArea = Main.layoutManager.getWorkAreaForMonitor(this._monitor.index)
+        let shouldDwell;
+        // Check for the correct screen edge, extending the sensitive area to the whole workarea,
+        // minus 1 px to avoid conflicting with other active corners.
         if (this._position == St.Side.LEFT)
-            shouldDwell = shouldDwell && (x == this._monitor.x);
+            shouldDwell = (x == this._monitor.x) && (y > workArea.y) && (y < workArea.y + workArea.height);
         else if (this._position == St.Side.RIGHT)
-            shouldDwell = shouldDwell && (x == this._monitor.x + this._monitor.width - 1);
+            shouldDwell = (x == this._monitor.x + this._monitor.width - 1) && (y > workArea.y) && (y < workArea.y + workArea.height);
         else if (this._position == St.Side.TOP)
-            shouldDwell = shouldDwell && (y == this._monitor.y);
+            shouldDwell = (y == this._monitor.y) && (x > workArea.x) && (x < workArea.x + workArea.width);
         else if (this._position == St.Side.BOTTOM)
-            shouldDwell = shouldDwell && (y == this._monitor.y + this._monitor.height - 1);
+            shouldDwell = (y == this._monitor.y + this._monitor.height - 1) && (x > workArea.x) && (x < workArea.x + workArea.width);
 
         if (shouldDwell) {
             // We only set up dwell timeout when the user is not hovering over the dock
@@ -870,8 +881,50 @@ const DockedDash = new Lang.Class({
         // would never be triggered and the dock would stay visible forever.
         let triggerTimeoutId =  Mainloop.timeout_add(250, Lang.bind(this, function() {
             triggerTimeoutId = 0;
-            this._hoverChanged();
-            return GLib.SOURCE_REMOVE;
+
+            let [x, y, mods] = global.get_pointer();
+            let shouldHide = true;
+            switch (this._position) {
+            case St.Side.LEFT:
+                if (x <= this.staticBox.x2 &&
+                    x >= this._monitor.x &&
+                    y >= this._monitor.y &&
+                    y <= this._monitor.y + this._monitor.height) {
+                    shouldHide = false;
+                }
+                break;
+            case St.Side.RIGHT:
+                if (x >= this.staticBox.x1 &&
+                    x <= this._monitor.x + this._monitor.width &&
+                    y >= this._monitor.y &&
+                    y <= this._monitor.y + this._monitor.height) {
+                    shouldHide = false;
+                }
+                break;
+            case St.Side.TOP:
+                if (x >= this._monitor.x &&
+                    x <= this._monitor.x + this._monitor.width &&
+                    y <= this.staticBox.y2 &&
+                    y >= this._monitor.y) {
+                    shouldHide = false;
+                }
+                break;
+            case St.Side.BOTTOM:
+                if (x >= this._monitor.x &&
+                    x <= this._monitor.x + this._monitor.width &&
+                    y >= this.staticBox.y1 &&
+                    y <= this._monitor.y + this._monitor.height) {
+                    shouldHide = false;
+                }
+            }
+            if (shouldHide) {
+                this._hoverChanged();
+                return GLib.SOURCE_REMOVE;
+            }
+            else {
+                return GLib.SOURCE_CONTINUE;
+            }
+
         }));
 
         this._show();
@@ -898,6 +951,11 @@ const DockedDash = new Lang.Class({
         // Remove existing barrier
         this._removeBarrier();
 
+        // The barrier needs to be removed in fullscreen with autohide disabled, otherwise the mouse can
+        // get trapped on monitor.
+        if (this._monitor.inFullscreen && !this._settings.get_boolean('autohide-in-fullscreen'))
+            return
+
         // Manually reset pressure barrier
         // This is necessary because we remove the pressure barrier when it is triggered to show the dock
         if (this._pressureBarrier) {
@@ -906,36 +964,38 @@ const DockedDash = new Lang.Class({
         }
 
         // Create new barrier
-        // Note: dash in fixed position doesn't use pressure barrier
+        // The barrier extends to the whole workarea, minus 1 px to avoid conflicting with other active corners
+        // Note: dash in fixed position doesn't use pressure barrier.
         if (this._canUsePressure && this._autohideIsEnabled && this._settings.get_boolean('require-pressure-to-show')) {
             let x1, x2, y1, y2, direction;
+            let workArea = Main.layoutManager.getWorkAreaForMonitor(this._monitor.index)
 
             if (this._position == St.Side.LEFT) {
-                x1 = this.staticBox.x1;
-                x2 = this.staticBox.x1;
-                y1 = this.staticBox.y1;
-                y2 = this.staticBox.y2;
+                x1 = this._monitor.x + 1;
+                x2 = x1;
+                y1 = workArea.y + 1;
+                y2 = workArea.y + workArea.height - 1;
                 direction = Meta.BarrierDirection.POSITIVE_X;
             }
             else if (this._position == St.Side.RIGHT) {
-                x1 = this.staticBox.x2;
-                x2 = this.staticBox.x2;
-                y1 = this.staticBox.y1;
-                y2 = this.staticBox.y2;
+                x1 = this._monitor.x + this._monitor.width - 1;
+                x2 = x1;
+                y1 = workArea.y + 1;
+                y2 = workArea.y + workArea.height - 1;
                 direction = Meta.BarrierDirection.NEGATIVE_X;
             }
             else if (this._position == St.Side.TOP) {
-                x1 = this.staticBox.x1;
-                x2 = this.staticBox.x2;
-                y1 = this.staticBox.y1;
-                y2 = this.staticBox.y1;
+                x1 = workArea.x + 1;
+                x2 = workArea.x + workArea.width - 1;
+                y1 = this._monitor.y;
+                y2 = y1;
                 direction = Meta.BarrierDirection.POSITIVE_Y;
             }
             else if (this._position == St.Side.BOTTOM) {
-                x1 = this.staticBox.x1;
-                x2 = this.staticBox.x2;
-                y1 = this.staticBox.y2;
-                y2 = this.staticBox.y2;
+                x1 = workArea.x + 1;
+                x2 = workArea.x + workArea.width - 1;
+                y1 = this._monitor.y + this._monitor.height;
+                y2 = y1;
                 direction = Meta.BarrierDirection.NEGATIVE_Y;
             }
 
@@ -953,28 +1013,19 @@ const DockedDash = new Lang.Class({
     },
 
     _isPrimaryMonitor: function() {
-        return ((this._monitor.x == Main.layoutManager.primaryMonitor.x) &&
-             (this._monitor.y == Main.layoutManager.primaryMonitor.y));
+        return (this._monitorIndex == Main.layoutManager.primaryIndex);
     },
 
     _resetPosition: function() {
         // Ensure variables linked to settings are updated.
         this._updateVisibilityMode();
 
-        let monitorIndex = this._settings.get_int('preferred-monitor');
         let extendHeight = this._settings.get_boolean('extend-height');
-
-        if ((monitorIndex > 0) && (monitorIndex < Main.layoutManager.monitors.length))
-            this._monitor = Main.layoutManager.monitors[monitorIndex];
-        else {
-            monitorIndex = Main.layoutManager.primaryIndex
-            this._monitor = Main.layoutManager.primaryMonitor;
-        }
 
         // Note: do not use the workarea coordinates in the direction on which the dock is placed,
         // to avoid a loop [position change -> workArea change -> position change] with
         // fixed dock.
-        let workArea = Main.layoutManager.getWorkAreaForMonitor(monitorIndex);
+        let workArea = Main.layoutManager.getWorkAreaForMonitor(this._monitorIndex);
 
         // Reserve space for the dash on the overview
         // if the dock is on the primary monitor
@@ -1047,13 +1098,25 @@ const DockedDash = new Lang.Class({
         }
 
         this._y0 = this.actor.y;
-        this._adjustPanelCorners();
 
         this._adjustLegacyTray();
-        this._updateStaticBox();
+    },
+
+    // Set the dash at the correct depth in z
+    _resetDepth: function() {
+        // Keep the dash below the modalDialogGroup and the legacyTray
+        if (Main.legacyTray && Main.legacyTray.actor)
+            Main.layoutManager.uiGroup.set_child_below_sibling(this.actor, Main.legacyTray.actor);
+        else
+            Main.layoutManager.uiGroup.set_child_below_sibling(this.actor, Main.layoutManager.modalDialogGroup);
     },
 
     _adjustLegacyTray: function() {
+        // The legacyTray has been removed in GNOME Shell 3.26.
+        // Once we drop support for previous releases this fuction can be dropped too.
+        if (!Main.legacyTray)
+            return;
+
         let use_work_area = true;
 
         if (this._fixedIsEnabled && !this._settings.get_boolean('extend-height')
@@ -1070,6 +1133,10 @@ const DockedDash = new Lang.Class({
     },
 
     _resetLegacyTray: function() {
+        // The legacyTray has been removed in GNOME Shell 3.26.
+        // Once we drop support for previous releases this fuction can be dropped too.
+        if (!Main.legacyTray)
+                return;
         Main.legacyTray.actor.clear_constraints();
         let constraint = new Layout.MonitorConstraint({
             primary: true,
@@ -1089,24 +1156,6 @@ const DockedDash = new Lang.Class({
         this._intellihide.updateTargetBox(this.staticBox);
     },
 
-    /**
-     * Adjust Panel corners
-     */
-    _adjustPanelCorners: function() {
-        let extendHeight = this._settings.get_boolean('extend-height');
-        if (!this._isHorizontal && this._isPrimaryMonitor() && extendHeight && this._fixedIsEnabled) {
-            Main.panel._rightCorner.actor.hide();
-            Main.panel._leftCorner.actor.hide();
-        }
-        else
-            this._revertPanelCorners();
-    },
-
-    _revertPanelCorners: function() {
-        Main.panel._leftCorner.actor.show();
-        Main.panel._rightCorner.actor.show();
-    },
-
     _removeAnimations: function() {
         Tweener.removeTweens(this._slider);
     },
@@ -1122,7 +1171,7 @@ const DockedDash = new Lang.Class({
 
     _onDragEnd: function() {
         // Restore drag default dash stack order
-        Main.layoutManager.uiGroup.set_child_below_sibling(this.actor, Main.layoutManager.modalDialogGroup);
+        this._resetDepth();
         if (this._oldignoreHover !== null)
             this._ignoreHover  = this._oldignoreHover;
         this._oldignoreHover = null;
@@ -1171,101 +1220,6 @@ const DockedDash = new Lang.Class({
         this._animateIn(this._settings.get_double('animation-time'), 0);
     },
 
-    _onShowAppsButtonToggled: function() {
-        // Sync the status of the default appButtons. Only if the two statuses are
-        // different, that means the user interacted with the extension provided
-        // application button, cutomize the behaviour. Otherwise the shell has changed the
-        // status (due to the _syncShowAppsButtonToggled function below) and it
-        // has already performed the desired action.
-
-        let animate = this._settings.get_boolean('animate-show-apps');
-        let selector = Main.overview.viewSelector;
-
-        if (selector._showAppsButton.checked !== this.dash.showAppsButton.checked) {
-            // find visible view
-            let visibleView;
-            Main.overview.viewSelector.appDisplay._views.every(function(v, index) {
-                if (v.view.actor.visible) {
-                    visibleView = index;
-                    return false;
-                }
-                else
-                    return true;
-            });
-
-            if (this.dash.showAppsButton.checked) {
-                // force spring animation triggering.By default the animation only
-                // runs if we are already inside the overview.
-                if (!Main.overview._shown) {
-                    this.forcedOverview = true;
-                    if (animate) {
-                        let view = Main.overview.viewSelector.appDisplay._views[visibleView].view;
-                        let grid = view._grid;
-
-                        // Animate in the the appview, hide the appGrid to avoiud flashing
-                        // Go to the appView before entering the overview, skipping the workspaces.
-                        // Do this manually avoiding opacity in transitions so that the setting of the opacity
-                        // to 0 doesn't get overwritten.
-                        Main.overview.viewSelector._activePage.opacity = 0;
-                        Main.overview.viewSelector._activePage.hide();
-                        Main.overview.viewSelector._activePage = Main.overview.viewSelector._appsPage;
-                        Main.overview.viewSelector._activePage.show();
-                        grid.actor.opacity = 0;
-
-                        // The animation has to be trigered manually because the AppDisplay.animate
-                        // method is waiting for an allocation not happening, as we skip the workspace view
-                        // and the appgrid could already be allocated from previous shown.
-                        // It has to be triggered after the overview is shown as wrong coordinates are obtained
-                        // otherwise.
-                        let overviewShownId = Main.overview.connect('shown', Lang.bind(this, function() {
-                            Main.overview.disconnect(overviewShownId);
-                            Meta.later_add(Meta.LaterType.BEFORE_REDRAW, Lang.bind(this, function() {
-                                grid.actor.opacity = 255;
-                                grid.animateSpring(IconGrid.AnimationDirection.IN, this.dash.showAppsButton);
-                            }));
-                        }));
-                    }
-                }
-
-                // Finally show the overview
-                selector._showAppsButton.checked = true;
-                Main.overview.show();
-            }
-            else {
-                if (this.forcedOverview) {
-                    // force exiting overview if needed
-
-                    if (animate) {
-                        // Manually trigger springout animation without activating the
-                        // workspaceView to avoid the zoomout animation. Hide the appPage
-                        // onComplete to avoid ugly flashing of original icons.
-                        let view = Main.overview.viewSelector.appDisplay._views[visibleView].view;
-                        let grid = view._grid;
-                        view.animate(IconGrid.AnimationDirection.OUT, Lang.bind(this, function() {
-                            Main.overview.viewSelector._appsPage.hide();
-                            Main.overview.hide();
-                            selector._showAppsButton.checked = false;
-                            this.forcedOverview = false;
-                        }));
-                    }
-                    else {
-                        Main.overview.hide();
-                        this.forcedOverview = false;
-                    }
-                }
-                else {
-                    selector._showAppsButton.checked = false;
-                    this.forcedOverview = false;
-                }
-            }
-        }
-
-        // whenever the button is unactivated even if not by the user still reset the
-        // forcedOverview flag
-        if (this.dash.showAppsButton.checked == false)
-            this.forcedOverview = false;
-    },
-
     /**
      * Keep ShowAppsButton status in sync with the overview status
      */
@@ -1275,7 +1229,13 @@ const DockedDash = new Lang.Class({
             this.dash.showAppsButton.checked = status;
     },
 
-    // Optional features enable/disable
+    // Optional features to be enabled only for the main Dock
+    _enableExtraFeatures: function() {
+        // Restore dash accessibility
+        Main.ctrlAltTabManager.addGroup(
+            this.dash.actor, _('Dash'), 'user-bookmarks-symbolic',
+                {focusCallback: Lang.bind(this, this._onAccessibilityFocus)});
+    },
 
     /**
      * Switch workspace by scrolling over the dock
@@ -1283,14 +1243,18 @@ const DockedDash = new Lang.Class({
     _optionalScrollWorkspaceSwitch: function() {
         let label = 'optionalScrollWorkspaceSwitch';
 
-        this._settings.connect('changed::scroll-switch-workspace', Lang.bind(this, function() {
-            if (this._settings.get_boolean('scroll-switch-workspace'))
+        function isEnabled() {
+            return this._settings.get_enum('scroll-action') === scrollAction.SWITCH_WORKSPACE;
+        }
+
+        this._settings.connect('changed::scroll-action', Lang.bind(this, function() {
+            if (Lang.bind(this, isEnabled)())
                 Lang.bind(this, enable)();
             else
                 Lang.bind(this, disable)();
         }));
 
-        if (this._settings.get_boolean('scroll-switch-workspace'))
+        if (Lang.bind(this, isEnabled)())
             Lang.bind(this, enable)();
 
         function enable() {
@@ -1378,52 +1342,262 @@ const DockedDash = new Lang.Class({
         }
     },
 
-    /**
-     * Isolate overview to open new windows for inactive apps
-     */
-    _optionalWorkspaceIsolation: function() {
+    _activateApp: function(appIndex) {
+        let children = this.dash._box.get_children().filter(function(actor) {
+                return actor.child &&
+                       actor.child._delegate &&
+                       actor.child._delegate.app;
+        });
 
-        let label = 'optionalWorkspaceIsolation';
+        // Apps currently in the dash
+        let apps = children.map(function(actor) {
+                return actor.child._delegate;
+            });
 
-        this._settings.connect('changed::isolate-workspaces', Lang.bind(this, function() {
-            this.dash.resetAppIcons();
-            if (this._settings.get_boolean('isolate-workspaces'))
-                Lang.bind(this, enable)();
-            else
-                Lang.bind(this, disable)();
-        }));
+        // Activate with button = 1, i.e. same as left click
+        let button = 1;
+        if (appIndex < apps.length)
+            apps[appIndex].activate(button);
+    }
 
-        if (this._settings.get_boolean('isolate-workspaces'))
-            Lang.bind(this, enable)();
+});
 
-        function enable() {
-            this._injectionsHandler.removeWithLabel(label);
+Signals.addSignalMethods(DockedDash.prototype);
 
-            this._injectionsHandler.addWithLabel(label, [
-                Shell.App.prototype,
-                'activate',
-                IsolatedOverview
-            ]);
+/*
+ * Handle keybaord shortcuts
+ */
+const KeyboardShortcuts = new Lang.Class({
 
-            this._signalsHandler.removeWithLabel(label);
+    Name: 'DashToDock.KeyboardShortcuts',
 
-            this._signalsHandler.addWithLabel(label, [
+    _numHotkeys: 10,
+
+    _init: function(settings, allDocks){
+
+        this._settings = settings;
+        this._allDocks = allDocks;
+        this._signalsHandler = new Utils.GlobalSignalsHandler();
+
+        this._hotKeysEnabled = false;
+        if (this._settings.get_boolean('hot-keys'))
+            this._enableHotKeys();
+
+        this._signalsHandler.add([
+            this._settings,
+            'changed::hot-keys',
+            Lang.bind(this, function() {
+                    if (this._settings.get_boolean('hot-keys'))
+                        Lang.bind(this, this._enableHotKeys)();
+                    else
+                        Lang.bind(this, this._disableHotKeys)();
+            })
+        ]);
+
+        this._optionalNumberOverlay();
+    },
+
+    destroy: function (){
+        // Remove keybindings
+        this._disableHotKeys();
+        this._disableExtraShortcut();
+        this._signalsHandler.destroy();
+    },
+
+    _enableHotKeys: function() {
+        if (this._hotKeysEnabled)
+            return;
+
+        // Setup keyboard bindings for dash elements
+        let keys = ['app-hotkey-', 'app-shift-hotkey-', 'app-ctrl-hotkey-'];
+        keys.forEach( function(key) {
+            for (let i = 0; i < this._numHotkeys; i++) {
+                let appNum = i;
+                Main.wm.addKeybinding(key + (i + 1), this._settings,
+                                      Meta.KeyBindingFlags.NONE,
+                                      Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW,
+                                      Lang.bind(this, function() {
+                                          this._allDocks[0]._activateApp(appNum);
+                                          this._showOverlay();
+                                      }));
+            }
+        }, this);
+
+        this._hotKeysEnabled = true;
+    },
+
+    _disableHotKeys: function() {
+        if (!this._hotKeysEnabled)
+            return;
+
+        let keys = ['app-hotkey-', 'app-shift-hotkey-', 'app-ctrl-hotkey-'];
+        keys.forEach( function(key) {
+            for (let i = 0; i < this._numHotkeys; i++)
+                Main.wm.removeKeybinding(key + (i + 1));
+        }, this);
+
+        this._hotKeysEnabled = false;
+    },
+
+    _optionalNumberOverlay: function() {
+        this._shortcutIsSet = false;
+        // Enable extra shortcut if either 'overlay' or 'show-dock' are true
+        if (this._settings.get_boolean('hot-keys') &&
+           (this._settings.get_boolean('hotkeys-overlay') || this._settings.get_boolean('hotkeys-show-dock')))
+            this._enableExtraShortcut();
+
+        this._signalsHandler.add([
+            this._settings,
+            'changed::hot-keys',
+            Lang.bind(this, this._checkHotkeysOptions)
+        ], [
+            this._settings,
+            'changed::hotkeys-overlay',
+            Lang.bind(this, this._checkHotkeysOptions)
+        ], [
+            this._settings,
+            'changed::hotkeys-show-dock',
+            Lang.bind(this, this._checkHotkeysOptions)
+        ]);
+    },
+
+    _checkHotkeysOptions: function() {
+        if (this._settings.get_boolean('hot-keys') &&
+           (this._settings.get_boolean('hotkeys-overlay') || this._settings.get_boolean('hotkeys-show-dock')))
+            this._enableExtraShortcut();
+        else
+            this._disableExtraShortcut();
+    },
+
+    _enableExtraShortcut: function() {
+        if (!this._shortcutIsSet) {
+            Main.wm.addKeybinding('shortcut', this._settings,
+                                  Meta.KeyBindingFlags.NONE,
+                                  Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW,
+                                  Lang.bind(this, this._showOverlay));
+            this._shortcutIsSet = true;
+        }
+    },
+
+    _disableExtraShortcut: function() {
+        if (this._shortcutIsSet) {
+            Main.wm.removeKeybinding('shortcut');
+            this._shortcutIsSet = false;
+        }
+    },
+
+    _showOverlay: function() {
+        for (let i = 0; i < this._allDocks.length; i++) {
+            let dock = this._allDocks[i];
+            if (dock._settings.get_boolean('hotkeys-overlay'))
+                dock.dash.toggleNumberOverlay(true);
+
+            // Restart the counting if the shortcut is pressed again
+            if (dock._numberOverlayTimeoutId) {
+                Mainloop.source_remove(dock._numberOverlayTimeoutId);
+                dock._numberOverlayTimeoutId = 0;
+            }
+
+            // Hide the overlay/dock after the timeout
+            let timeout = dock._settings.get_double('shortcut-timeout') * 1000;
+            dock._numberOverlayTimeoutId = Mainloop.timeout_add(timeout, Lang.bind(dock, function() {
+                    dock._numberOverlayTimeoutId = 0;
+                    dock.dash.toggleNumberOverlay(false);
+                    // Hide the dock again if necessary
+                    dock._updateDashVisibility();
+            }));
+
+            // Show the dock if it is hidden
+            if (dock._settings.get_boolean('hotkeys-show-dock')) {
+                let showDock = (dock._intellihideIsEnabled || dock._autohideIsEnabled);
+                if (showDock)
+                    dock._show();
+            }
+        }
+    }
+
+});
+
+/**
+ * Isolate overview to open new windows for inactive apps
+ * Note: the future implementaion is not fully contained here. Some bits are around in other methods of other classes.
+ * This class just take care of enabling/disabling the option.
+ */
+const WorkspaceIsolation = new Lang.Class({
+
+    Name: 'DashToDock.WorkspaceIsolation',
+
+    _init: function(settings, allDocks) {
+
+        this._settings = settings;
+        this._allDocks = allDocks;
+
+        this._signalsHandler = new Utils.GlobalSignalsHandler();
+        this._injectionsHandler = new Utils.InjectionsHandler();
+
+        this._signalsHandler.add([
+            this._settings,
+            'changed::isolate-workspaces',
+            Lang.bind(this, function() {
+                    this._allDocks.forEach(function(dock) {
+                        dock.dash.resetAppIcons();
+                    });
+                    if (this._settings.get_boolean('isolate-workspaces') ||
+                        this._settings.get_boolean('isolate-monitors'))
+                        Lang.bind(this, this._enable)();
+                    else
+                        Lang.bind(this, this._disable)();
+            })
+        ],[
+            this._settings,
+            'changed::isolate-monitors',
+            Lang.bind(this, function() {
+                    this._allDocks.forEach(function(dock) {
+                        dock.dash.resetAppIcons();
+                    });
+                    if (this._settings.get_boolean('isolate-workspaces') ||
+                        this._settings.get_boolean('isolate-monitors'))
+                        Lang.bind(this, this._enable)();
+                    else
+                        Lang.bind(this, this._disable)();
+            })
+        ]);
+
+        if (this._settings.get_boolean('isolate-workspaces') ||
+            this._settings.get_boolean('isolate-monitors'))
+            this._enable();
+
+    },
+
+    _enable: function() {
+
+        // ensure I never double-register/inject
+        // although it should never happen
+        this._disable();
+
+        this._allDocks.forEach(function(dock) {
+            this._signalsHandler.addWithLabel('isolation', [
                 global.screen,
                 'restacked',
-                Lang.bind(this.dash, this.dash._queueRedisplay)
-            ]);
-            this._signalsHandler.addWithLabel(label, [
+                Lang.bind(dock.dash, dock.dash._queueRedisplay)
+            ], [
                 global.window_manager,
                 'switch-workspace',
-                Lang.bind(this.dash, this.dash._queueRedisplay)
+                Lang.bind(dock.dash, dock.dash._queueRedisplay)
             ]);
-        }
 
-        function disable() {
-            this._injectionsHandler.removeWithLabel(label);
-            this._signalsHandler.removeWithLabel(label);
-        }
+            // This last signal is only needed for monitor isolation, as windows
+            // might migrate from one monitor to another without triggering 'restacked'
+            if (this._settings.get_boolean('isolate-monitors'))
+                this._signalsHandler.addWithLabel('isolation', [
+                    global.screen,
+                    'window-entered-monitor',
+                    Lang.bind(dock.dash, dock.dash._queueRedisplay)
+                ]);
 
+        }, this);
+
+        // here this is the Shell.App
         function IsolatedOverview() {
             // These lines take care of Nautilus for icons on Desktop
             let windows = this.get_windows().filter(function(w) {
@@ -1437,7 +1611,306 @@ const DockedDash = new Lang.Class({
                 return Main.activateWindow(windows[0]);
             return this.open_new_window(-1);
         }
+
+        this._injectionsHandler.addWithLabel('isolation', [
+            Shell.App.prototype,
+            'activate',
+            IsolatedOverview
+        ]);
+    },
+
+    _disable: function () {
+        this._signalsHandler.removeWithLabel('isolation');
+        this._injectionsHandler.removeWithLabel('isolation');
+    },
+
+    destroy: function() {
+        this._signalsHandler.destroy();
+        this._injectionsHandler.destroy();
     }
+
 });
 
-Signals.addSignalMethods(DockedDash.prototype);
+
+var DockManager = new Lang.Class({
+    Name: 'DashToDock.DockManager',
+
+    _init: function() {
+        this._settings = Convenience.getSettings('org.gnome.shell.extensions.dash-to-dock');
+        this._oldDash = Main.overview._dash;
+        /* Array of all the docks created */
+        this._allDocks = [];
+        this._createDocks();
+
+        // status variable: true when the overview is shown through the dash
+        // applications button.
+        this._forcedOverview = false;
+
+        // Connect relevant signals to the toggling function
+        this._bindSettingsChanges();
+    },
+
+    _toggle: function() {
+        this._deleteDocks();
+        this._createDocks();
+        this.emit('toggled');
+    },
+
+    _bindSettingsChanges: function() {
+        // Connect relevant signals to the toggling function
+        this._signalsHandler = new Utils.GlobalSignalsHandler();
+        this._signalsHandler.add([
+            global.screen,
+            'monitors-changed',
+            Lang.bind(this, this._toggle)
+        ], [
+            this._settings,
+            'changed::multi-monitor',
+            Lang.bind(this, this._toggle)
+        ], [
+            this._settings,
+            'changed::preferred-monitor',
+            Lang.bind(this, this._toggle)
+        ], [
+            this._settings,
+            'changed::dock-position',
+            Lang.bind(this, this._toggle)
+        ], [
+            this._settings,
+            'changed::extend-height',
+            Lang.bind(this, this._adjustPanelCorners)
+        ], [
+            this._settings,
+            'changed::dock-fixed',
+            Lang.bind(this, this._adjustPanelCorners)
+        ]);
+    },
+
+    _createDocks: function() {
+
+        this._preferredMonitorIndex = this._settings.get_int('preferred-monitor');
+        // In case of multi-monitor, we consider the dock on the primary monitor to be the preferred (main) one
+        // regardless of the settings
+        // The dock goes on the primary monitor also if the settings are incosistent (e.g. desired monitor not connected).
+        if (this._settings.get_boolean('multi-monitor') ||
+            this._preferredMonitorIndex < 0 || this._preferredMonitorIndex > Main.layoutManager.monitors.length - 1
+            ) {
+            this._preferredMonitorIndex = Main.layoutManager.primaryIndex;
+        } else {
+            // Gdk and shell monitors numbering differ at least under wayland:
+            // While the primary monitor appears to be always index 0 in Gdk,
+            // the shell can assign a different number (Main.layoutManager.primaryMonitor)
+            // This ensure the indexing in the settings (Gdk) and in the shell are matched,
+            // i.e. that we start counting from the primaryMonitorIndex
+            this._preferredMonitorIndex = (Main.layoutManager.primaryIndex + this._preferredMonitorIndex) % Main.layoutManager.monitors.length ;
+        }
+
+        // First we create the main Dock, to get the extra features to bind to this one
+        let dock = new DockedDash(this._settings, this._preferredMonitorIndex);
+        this._mainShowAppsButton = dock.dash.showAppsButton;
+        this._allDocks.push(dock);
+
+        // connect app icon into the view selector
+        dock.dash.showAppsButton.connect('notify::checked', Lang.bind(this, this._onShowAppsButtonToggled));
+
+        // Make the necessary changes to Main.overview._dash
+        this._prepareMainDash();
+
+        // Adjust corners if necessary
+        this._adjustPanelCorners();
+
+        if (this._settings.get_boolean('multi-monitor')) {
+            let nMon = Main.layoutManager.monitors.length;
+            for (let iMon = 0; iMon < nMon; iMon++) {
+                if (iMon == this._preferredMonitorIndex)
+                    continue;
+                let dock = new DockedDash(this._settings, iMon);
+                this._allDocks.push(dock);
+                // connect app icon into the view selector
+                dock.dash.showAppsButton.connect('notify::checked', Lang.bind(this, this._onShowAppsButtonToggled));
+            }
+        }
+
+        // Load optional features. We load *after* the docks are created, since
+        // we need to connect the signals to all dock instances.
+        this._workspaceIsolation = new WorkspaceIsolation(this._settings, this._allDocks);
+        this._keyboardShortcuts = new KeyboardShortcuts(this._settings, this._allDocks);
+    },
+
+    _prepareMainDash: function() {
+        // Pretend I'm the dash: meant to make appgrd swarm animation come from the
+        // right position of the appShowButton.
+        Main.overview._dash = this._allDocks[0].dash;
+
+        // set stored icon size  to the new dash
+        Main.overview.dashIconSize = this._allDocks[0].dash.iconSize;
+
+        // Hide usual Dash
+        Main.overview._controls.dash.actor.hide();
+
+        // Also set dash width to 1, so it's almost not taken into account by code
+        // calculaing the reserved space in the overview. The reason to keep it at 1 is
+        // to allow its visibility change to trigger an allocaion of the appGrid which
+        // in turn is triggergin the appsIcon spring animation, required when no other
+        // actors has this effect, i.e in horizontal mode and without the workspaceThumnails
+        // 1 static workspace only)
+        Main.overview._controls.dash.actor.set_width(1);
+    },
+
+    _deleteDocks: function() {
+        // Remove extra features
+        this._workspaceIsolation.destroy();
+        this._keyboardShortcuts.destroy();
+
+        // Delete all docks
+        let nDocks = this._allDocks.length;
+        for (let i = nDocks-1; i >= 0; i--) {
+            this._allDocks[i].destroy();
+            this._allDocks.pop();
+        }
+    },
+
+    _restoreDash: function() {
+        Main.overview._controls.dash.actor.show();
+        Main.overview._controls.dash.actor.set_width(-1); //reset default dash size
+        // This force the recalculation of the icon size
+        Main.overview._controls.dash._maxHeight = -1;
+
+        // reset stored icon size  to the default dash
+        Main.overview.dashIconSize = Main.overview._controls.dash.iconSize;
+
+        Main.overview._dash = this._oldDash;
+    },
+
+    _onShowAppsButtonToggled: function(button) {
+        // Sync the status of the default appButtons. Only if the two statuses are
+        // different, that means the user interacted with the extension provided
+        // application button, cutomize the behaviour. Otherwise the shell has changed the
+        // status (due to the _syncShowAppsButtonToggled function below) and it
+        // has already performed the desired action.
+
+        let animate = this._settings.get_boolean('animate-show-apps');
+        let selector = Main.overview.viewSelector;
+
+        if (selector._showAppsButton.checked !== button.checked) {
+            // find visible view
+            let visibleView;
+            Main.overview.viewSelector.appDisplay._views.every(function(v, index) {
+                if (v.view.actor.visible) {
+                    visibleView = index;
+                    return false;
+                }
+                else
+                    return true;
+            });
+
+            if (button.checked) {
+                // force spring animation triggering.By default the animation only
+                // runs if we are already inside the overview.
+                if (!Main.overview._shown) {
+                    this._forcedOverview = true;
+                    let view = Main.overview.viewSelector.appDisplay._views[visibleView].view;
+                    let grid = view._grid;
+                    if (animate) {
+                        // Animate in the the appview, hide the appGrid to avoiud flashing
+                        // Go to the appView before entering the overview, skipping the workspaces.
+                        // Do this manually avoiding opacity in transitions so that the setting of the opacity
+                        // to 0 doesn't get overwritten.
+                        Main.overview.viewSelector._activePage.opacity = 0;
+                        Main.overview.viewSelector._activePage.hide();
+                        Main.overview.viewSelector._activePage = Main.overview.viewSelector._appsPage;
+                        Main.overview.viewSelector._activePage.show();
+                        grid.actor.opacity = 0;
+
+                        // The animation has to be trigered manually because the AppDisplay.animate
+                        // method is waiting for an allocation not happening, as we skip the workspace view
+                        // and the appgrid could already be allocated from previous shown.
+                        // It has to be triggered after the overview is shown as wrong coordinates are obtained
+                        // otherwise.
+                        let overviewShownId = Main.overview.connect('shown', Lang.bind(this, function() {
+                            Main.overview.disconnect(overviewShownId);
+                            Meta.later_add(Meta.LaterType.BEFORE_REDRAW, Lang.bind(this, function() {
+                                grid.actor.opacity = 255;
+                                grid.animateSpring(IconGrid.AnimationDirection.IN, this._allDocks[0].dash.showAppsButton);
+                            }));
+                        }));
+                    }
+                    else {
+                        Main.overview.viewSelector._activePage = Main.overview.viewSelector._appsPage;
+                        Main.overview.viewSelector._activePage.show();
+                        grid.actor.opacity = 255;
+                    }
+
+                }
+
+                // Finally show the overview
+                selector._showAppsButton.checked = true;
+                Main.overview.show();
+            }
+            else {
+                if (this._forcedOverview) {
+                    // force exiting overview if needed
+
+                    if (animate) {
+                        // Manually trigger springout animation without activating the
+                        // workspaceView to avoid the zoomout animation. Hide the appPage
+                        // onComplete to avoid ugly flashing of original icons.
+                        let view = Main.overview.viewSelector.appDisplay._views[visibleView].view;
+                        let grid = view._grid;
+                        view.animate(IconGrid.AnimationDirection.OUT, Lang.bind(this, function() {
+                            Main.overview.viewSelector._appsPage.hide();
+                            Main.overview.hide();
+                            selector._showAppsButton.checked = false;
+                            this._forcedOverview = false;
+                        }));
+                    }
+                    else {
+                        Main.overview.hide();
+                        this._forcedOverview = false;
+                    }
+                }
+                else {
+                    selector._showAppsButton.checked = false;
+                    this._forcedOverview = false;
+                }
+            }
+        }
+
+        // whenever the button is unactivated even if not by the user still reset the
+        // forcedOverview flag
+        if (button.checked == false)
+            this._forcedOverview = false;
+    },
+
+    destroy: function() {
+        this._signalsHandler.destroy();
+        this._deleteDocks();
+        this._revertPanelCorners();
+        this._restoreDash();
+    },
+
+    /**
+     * Adjust Panel corners
+     */
+    _adjustPanelCorners: function() {
+        let position = Utils.getPosition(this._settings);
+        let isHorizontal = ((position == St.Side.TOP) || (position == St.Side.BOTTOM));
+        let extendHeight   = this._settings.get_boolean('extend-height');
+        let fixedIsEnabled = this._settings.get_boolean('dock-fixed');
+        let dockOnPrimary  = this._settings.get_boolean('multi-monitor') ||
+                             this._preferredMonitorIndex == Main.layoutManager.primaryIndex;
+
+        if (!isHorizontal && dockOnPrimary && extendHeight && fixedIsEnabled) {
+            Main.panel._rightCorner.actor.hide();
+            Main.panel._leftCorner.actor.hide();
+        }
+        else
+            this._revertPanelCorners();
+    },
+
+    _revertPanelCorners: function() {
+        Main.panel._leftCorner.actor.show();
+        Main.panel._rightCorner.actor.show();
+    }
+});
+Signals.addSignalMethods(DockManager.prototype);

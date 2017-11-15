@@ -17,64 +17,27 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **/
 
+const Gtk = imports.gi.Gtk;
 const Gio = imports.gi.Gio;
-const GLib = imports.gi.GLib;
 const Gettext = imports.gettext;
 
 function getSettings(extension) {
     let schemaName = 'org.gnome.shell.extensions.mediaplayer';
     let schemaDir = extension.dir.get_child('schemas').get_path();
+    let schemaSource = Gio.SettingsSchemaSource.new_from_directory(schemaDir,
+                           Gio.SettingsSchemaSource.get_default(),
+                           false);
+    let schema = schemaSource.lookup(schemaName, false);
 
-    // Extension installed in .local
-    if (GLib.file_test(schemaDir + '/gschemas.compiled', GLib.FileTest.EXISTS)) {
-        let schemaSource = Gio.SettingsSchemaSource.new_from_directory(schemaDir,
-                                  Gio.SettingsSchemaSource.get_default(),
-                                  false);
-        let schema = schemaSource.lookup(schemaName, false);
-
-        return new Gio.Settings({ settings_schema: schema });
-    }
-    // Extension installed system-wide
-    else {
-        if (Gio.Settings.list_schemas().indexOf(schemaName) == -1)
-            throw "Schema \"%s\" not found.".format(schemaName);
-        return new Gio.Settings({ schema: schemaName });
-    }
-}
+    return new Gio.Settings({ settings_schema: schema });
+};
 
 function initTranslations(extension) {
     let localeDir = extension.dir.get_child('locale').get_path();
-
-    // Extension installed in .local
-    if (GLib.file_test(localeDir, GLib.FileTest.EXISTS)) {
-        Gettext.bindtextdomain('gnome-shell-extensions-mediaplayer', localeDir);
-    }
-    // Extension installed system-wide
-    else {
-        Gettext.bindtextdomain('gnome-shell-extensions-mediaplayer', extension.metadata.locale);
-    }
-}
-
-let compileTemplate = function(template, playerState) {
-  return template.replace(/{(\w+)\|?([^}]*)}/g, function(match, fieldName, appendText) {
-    let text = "";
-    if (playerState[fieldName]) {
-      text = playerState[fieldName].toString()
-      .replace(/&/, "&amp;")
-      .replace(/</, "&lt;")
-      .replace(/>/, "&gt;") + appendText;
-    }
-    return text;
-  });
+    Gettext.bindtextdomain('gnome-shell-extensions-mediaplayer', localeDir);
 };
 
-let _extends = function(object1, object2) {
-  Object.getOwnPropertyNames(object2).forEach(function(name, index) {
-    let desc = Object.getOwnPropertyDescriptor(object2, name);
-    if (! desc.writable)
-      Object.defineProperty(object1.prototype, name, desc);
-    else {
-      object1.prototype[name] = object2[name];
-    }
-  });
+function addIcon(extension) {
+    let iconPath = extension.dir.get_path();
+    Gtk.IconTheme.get_default().append_search_path(iconPath);
 };

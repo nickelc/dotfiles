@@ -22,53 +22,87 @@
 const Me = imports.misc.extensionUtils.getCurrentExtension();
 const Lib = Me.imports.lib;
 
+const Config = imports.misc.config;
+
 const Gettext = imports.gettext.domain('gnome-shell-extensions-mediaplayer');
 const _ = Gettext.gettext;
-const N_ = function(t) { return t; };
 
-const MEDIAPLAYER_SETTINGS_SCHEMA = 'org.gnome.shell.extensions.mediaplayer';
-const MEDIAPLAYER_INDICATOR_POSITION_KEY = 'indicator-position';
-const MEDIAPLAYER_STATUS_TYPE_KEY = 'status-type';
-const MEDIAPLAYER_STATUS_TEXT_KEY = 'status-text';
-const MEDIAPLAYER_STATUS_SIZE_KEY = 'status-size';
-const MEDIAPLAYER_VOLUME_KEY = 'volume';
-const MEDIAPLAYER_POSITION_KEY = 'position';
-const MEDIAPLAYER_PLAYLISTS_KEY = 'playlists';
-const MEDIAPLAYER_COVER_SIZE = 'coversize';
-const MEDIAPLAYER_RUN_DEFAULT = 'rundefault';
-const MEDIAPLAYER_RATING_KEY = 'rating';
-const MEDIAPLAYER_TRACKBOX_TEMPLATE = 'trackbox-template';
+var MEDIAPLAYER_INDICATOR_POSITION_KEY = 'indicator-position';
+var MEDIAPLAYER_COVER_STATUS_KEY = 'cover-status';
+var MEDIAPLAYER_STATUS_TEXT_KEY = 'status-text';
+var MEDIAPLAYER_STATUS_SIZE_KEY = 'status-size';
+var MEDIAPLAYER_PLAY_STATE_ICON_KEY = 'play-state-icon';
+var MEDIAPLAYER_VOLUME_KEY = 'volume';
+var MEDIAPLAYER_HIDE_AGGINDICATOR_KEY = 'hide-aggindicator';
+var MEDIAPLAYER_POSITION_KEY = 'position';
+var MEDIAPLAYER_PLAYLISTS_KEY = 'playlists';
+var MEDIAPLAYER_STOP_BUTTON_KEY = 'stop-button';
+var MEDIAPLAYER_BUTTON_ICON_STYLE_KEY = 'button-icon-style';
+var MEDIAPLAYER_PLAYLIST_TITLE_KEY = 'playlist-title';
+var MEDIAPLAYER_TRACKLIST_KEY = 'tracklist';
+var MEDIAPLAYER_TRACKLIST_RATING_KEY = 'tracklist-rating';
+var MEDIAPLAYER_LOOP_STATUS_KEY = 'loop-status';
+var MEDIAPLAYER_RATING_KEY = 'rating';
+var MEDIAPLAYER_ENABLE_SCROLL_EVENTS_KEY = 'enable-scroll';
+var MEDIAPLAYER_HIDE_STOCK_MPRIS_KEY = 'hide-stockmpris';
+var MEDIAPLAYER_KEEP_ACTIVE_OPEN_KEY = 'active-open';
+var MEDIAPLAYER_PLAY_STATUS_ICON_KEY = 'playstatus';
 
-const IndicatorPosition = {
+var MINOR_VERSION = parseInt(Config.PACKAGE_VERSION.split(".")[1])
+
+var IndicatorPosition = {
+    LEFT: 3,
     CENTER: 0,
     RIGHT: 1,
     VOLUMEMENU: 2
 };
 
-const FADE_ANIMATION_TIME = 0.16;
-const COVER_SIZE = 100;
-
-const Status = {
-    STOP: N_("Stopped"),
-    PLAY: N_("Playing"),
-    PAUSE: N_("Paused"),
-    RUN: "Run"
+var ButtonIconStyles = {
+    CIRCULAR: 0,
+    SMALL: 1,
+    MEDIUM: 2,
+    LARGE: 3
 };
 
-const SEND_STOP_ON_CHANGE = [
-    "org.mpris.MediaPlayer2.banshee",
-    "org.mpris.MediaPlayer2.vlc",
-    "org.mpris.MediaPlayer2.pragha"
+var Status = {
+    STOP: "Stopped",
+    PLAY: "Playing",
+    PAUSE: "Paused"
+};
+
+var ValidPlaybackStatuses = [
+    'Stopped',
+    'Playing',
+    'Paused'
 ];
 
-const IndicatorStatusType = {
-    ICON: 0,
-    COVER: 1
-};
+var SUPPORTS_RATINGS_EXTENSION = [
+    "org.mpris.MediaPlayer2.Lollypop"
+];
 
-const DEFAULT_PLAYER_OWNER = "org.gnome.shell.extensions.mediaplayer";
+var WRONG_VOLUME_SCALING = [
+    "org.mpris.MediaPlayer2.quodlibet"
+];
 
-let gsettings;
+var ALTERNATIVE_PLAYLIST_TITLES = [
+    {"org.mpris.MediaPlayer2.pithos": _("Stations")}
+];
+
+var ALTERNATIVE_TRACKLIST_TITLES = [
+    {"org.mpris.MediaPlayer2.pithos": _("Current Playlist")}
+];
+
+var BROKEN_PLAYERS = [
+    "org.mpris.MediaPlayer2.spotify"
+];
+
+var NO_LOOP_STATUS_SUPPORT = [
+    "org.mpris.MediaPlayer2.quodlibet",
+    "org.mpris.MediaPlayer2.pithos",
+    "org.mpris.MediaPlayer2.spotify"
+];
+
+var gsettings;
 
 function init() {
     gsettings = Lib.getSettings(Me);
