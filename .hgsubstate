@@ -1,6 +1,5 @@
-ff663d2214dba1fd0816c928c803fc19ca948b24 mercurial/hgext/hg-git
-8937f19586fef8ab71787df8a2be463166401278 mercurial/hgext/hg-subversion
-30bdbd5f6173041fa3e8726195dc21f8fd6082ea mercurial/hgext/onsub
+c2b555f79f124e9bcb6eca23dac6c777074628da mercurial/hgext/hg-git
+ac40236a06e3ea693607a049457882f692af5fec mercurial/hgext/hg-subversion
 40cec4652cbd4f6d2d55fa8ae77db5598386da97 vim/bundle/gnupg
 82d9064e9e09347d8b47acb72f50e1154c55bbf7 vim/bundle/latex
 a5b5107729cc0fa9f001df51377f470931a2b4a8 vim/bundle/lawrencium
