@@ -1,6 +1,6 @@
 [ui]
 editor = vim
-username = Constantin Nickel <nickel.c@supergonzo.com>
+username = Constantin Nickel <constantin.nickel@gmail.com>
 merge = meld
 #ignore.other = ~/.hgignore
 
@@ -15,6 +15,9 @@ secret = true
 
 [pager]
 pager = LESS='FSRX' less
+
+[subrepos]
+git:allowed = true
 
 [web]
 cacerts = /etc/ssl/certs/ca-certificates.crt
