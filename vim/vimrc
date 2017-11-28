@@ -7,6 +7,7 @@ call pathogen#helptags()
 syntax on
 filetype plugin indent on
 
+set number
 set nobackup
 set showmode " always show what mode we're currently editing in
 set nowrap " don't wrap lines
@@ -31,26 +32,7 @@ let g:mapleader=","
 
 let g:ycm_rust_src_path="/usr/lib/rustlib/src/rust/src"
 
-" NERDTree
-autocmd VimEnter * NERDTree
-autocmd BufEnter * NERDTreeMirror
-autocmd BufEnter * if (winnr("$") == 1 && exists("b:NERDTree") && b:NERDTree.isTabTree()) | q | endif
-"CTRL-t to toggle tree view
-nmap <silent> <C-t> :NERDTreeToggle<CR>
-"Set F2 to put the cursor to the nerdtree
-nmap <silent> <F2> :NERDTreeFind<CR>
-
 " numbertoggle
-set number
 :nnoremap <silent> <C-n> :set relativenumber!<CR>
 
-" latexsuite: set output to pdf
-let g:Tex_DefaultTargetFormat="pdf"
-let g:Tex_MultipleCompileFormats="pdf, aux"
-" Disable QuickFix window and goto error
-" let g:Tex_GoToError=0
-" let g:Tex_ShowErrorContext=0
-
 let g:GPGUsePipes=1
-
-autocmd BufNewFile,BufRead *.md     set syntax=markdown
