@@ -1,4 +1,3 @@
-filetype off
 set nocompatible
 
 call pathogen#infect()
@@ -27,12 +26,28 @@ set pastetoggle=<F2>
 set modeline
 set modelines=10
 
+" Display tabs and trailing space visually
+set list listchars=tab:\ \ ,trail:·
+
 let mapleader=","
 let g:mapleader=","
 
+" Enable folding {{{
+"augroup fdm
+"    autocmd!
+"    autocmd FileType vim    setlocal foldmethod=marker
+"augroup END
+" set foldlevel=1
+" set foldlevelstart=99
+" }}}
+
+" Tabs - Navigation {{{
+nnoremap th :tabfirst<CR>
+nnoremap tj :tabprev<CR>
+nnoremap tk :tabnext<CR>
+nnoremap tl :tablast<CR>
+" }}}
+
 let g:ycm_rust_src_path="/usr/lib/rustlib/src/rust/src"
 
-" numbertoggle
-:nnoremap <silent> <C-n> :set relativenumber!<CR>
-
-let g:GPGUsePipes=1
+" vim: set sw=4 sts=4 et fdm=marker:
