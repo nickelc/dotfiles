@@ -1,6 +1,6 @@
 c2b555f79f124e9bcb6eca23dac6c777074628da mercurial/hgext/hg-git
 ac40236a06e3ea693607a049457882f692af5fec mercurial/hgext/hg-subversion
-401836ea7f221cc1bf58ee62f1ec0f0533076642 vim/bundle/YouCompleteMe
+e8e144d446603fbaebf23c54491f43ccd79b65f4 vim/bundle/YouCompleteMe
 651fd010aa9613a4b8636a4af8a2db0d22800262 vim/bundle/bufferline
 5b069789e237ca43533a229580822772640ce301 vim/bundle/gnupg
 439348543c9ffe2c5c4469a6e8f005f67bf73cc1 vim/bundle/indentLine
@@ -10,4 +10,6 @@ b89de09810b646ec2107160db3af9e530d20446c vim/bundle/nerdtree
 cfaecb9e22b45373bb4940010ce63a89073f6d8b vim/bundle/numbertoggle
 b6d88adcf9867aa69f4d20d45d49bb54979842a4 vim/bundle/rust.vim
 96cc251075f3f9d290c5afd4adf1b64c1542d469 vim/bundle/syntastic
+6f1f24840be163e85d610837567221639e268ddc vim/bundle/tcomment
+1fecb3a9d5a1c1bd0e24de7bb9329abb40bf4d30 vim/bundle/toml
 e7857bed4e0705f91f781dbe99706f07d08d104b vim/pathogen
