@@ -32,6 +32,8 @@ set list listchars=tab:\ \ ,trail:·
 let mapleader=","
 let g:mapleader=","
 
+imap ii <ESC>
+
 " Enable folding {{{
 "augroup fdm
 "    autocmd!

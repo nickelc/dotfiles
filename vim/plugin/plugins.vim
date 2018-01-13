@@ -49,6 +49,10 @@ let g:indentLine_leadingSpaceChar = '·'
 " let g:indentLine_char = '┊'
 " }}}
 
+" markdown-composer {{{
+let g:markdown_composer_open_browser=0
+" }}}
+
 " gpg {{{
 let g:GPGUsePipes=1
 " }}}
