@@ -1,7 +1,10 @@
 [user]
 	name = Constantin Nickel
-	email = nickel.c@supergonzo.com
+	email = constantin.nickel@gmail.com
 [core]
 	pager = LESS='FSRX' less
+	excludesfile = /home/constantin/.gitignore.global
 [color]
 	ui = auto
+[merge]
+	tool = meld
