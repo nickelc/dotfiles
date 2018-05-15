@@ -8,6 +8,7 @@ vim/bundle/latex = [git]https://github.com/gerw/vim-latex-suite.git
 vim/bundle/lawrencium = [git]https://github.com/ludovicchabant/vim-lawrencium.git
 vim/bundle/markdown-composer = [git]https://github.com/euclio/vim-markdown-composer.git
 vim/bundle/nerdtree = [git]https://github.com/scrooloose/nerdtree.git
+vim/bundle/nerdtree-git-plugin = [git]https://github.com/Xuyuanp/nerdtree-git-plugin.git
 vim/bundle/numbertoggle = [git]https://github.com/jeffkreeftmeijer/vim-numbertoggle.git
 vim/bundle/rust.vim = [git]https://github.com/rust-lang/rust.vim.git
 vim/bundle/syntastic = [git]https://github.com/vim-syntastic/syntastic.git
