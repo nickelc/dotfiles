@@ -14,6 +14,7 @@ bindkey -v
 # End of lines configured by zsh-newuser-install
 
 export PATH="$HOME/.cargo/bin:$PATH"
+export WINEDLLOVERRIDES="winemenubuilder.exe=d;mscoree=d;mshtml=d"
 
 # Aliases
 alias chmod='chmod -c'
