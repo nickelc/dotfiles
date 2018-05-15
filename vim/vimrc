@@ -32,7 +32,6 @@ set list listchars=tab:\ \ ,trail:·
 let mapleader=","
 let g:mapleader=","
 
-imap ii <ESC>
 
 " Enable folding {{{
 "augroup fdm
@@ -51,5 +50,9 @@ nnoremap tl :tablast<CR>
 " }}}
 
 let g:ycm_rust_src_path="/usr/lib/rustlib/src/rust/src"
+
+if executable("rustup") && executable("rustc")
+    let g:ycm_rust_src_path=expand(substitute(system("rustc --print sysroot"), '\n\+$', '', '') . "/lib/rustlib/src/rust/src")
+endif
 
 " vim: set sw=4 sts=4 et fdm=marker:

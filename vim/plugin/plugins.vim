@@ -1,6 +1,7 @@
 " NERDTree {{{
 let NERDTreeMinimalUI = 1
 let NERDTreeDirArrows = 1
+let NERDTreeIgnore =['\~$', '\.git', '\.hg', '\.svn', 'target', 'Cargo.lock']
 let NERDTreeQuitOnOpen = 1
 
 " Open a NERDTree on startup
