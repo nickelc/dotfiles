@@ -57,6 +57,9 @@ const DBusSessionManagerIface = '<node>\
     <method name="Uninhibit">\
         <arg type="u" direction="in" />\
     </method>\
+	<method name="GetInhibitors">\
+	    <arg type="ao" direction="out" />\
+	</method>\
     <signal name="InhibitorAdded">\
         <arg type="o" direction="out" />\
     </signal>\
@@ -111,9 +114,18 @@ const Caffeine = new Lang.Class({
 
         // From auto-move-windows@gnome-shell-extensions.gcampax.github.com
         this._windowTracker = Shell.WindowTracker.get_default();
-        let display = global.screen.get_display();
+
+        if (global.screen) {
+            this._screen = global.screen;
+            this._display = this._screen.get_display();
+        }
+        else {
+            this._screen = global.display;
+            this._display = this._screen;
+        }
+
         // Connect after so the handler from ShellWindowTracker has already run
-        this._windowCreatedId = display.connect_after('window-created', Lang.bind(this, this._mayInhibit));
+        this._windowCreatedId = this._display.connect_after('window-created', Lang.bind(this, this._mayInhibit));
         let shellwm = global.window_manager;
         this._windowDestroyedId = shellwm.connect('destroy', Lang.bind(this, this._mayUninhibit));
 
@@ -140,7 +152,7 @@ const Caffeine = new Lang.Class({
         }
         // Enable caffeine when fullscreen app is running
         if (this._settings.get_boolean(FULLSCREEN_KEY)) {
-            this._inFullscreenId = global.screen.connect('in-fullscreen-changed', Lang.bind(this, this.toggleFullscreen));
+            this._inFullscreenId = this._screen.connect('in-fullscreen-changed', Lang.bind(this, this.toggleFullscreen));
             this.toggleFullscreen();
         }
         // List current windows to check if we need to inhibit
@@ -150,10 +162,10 @@ const Caffeine = new Lang.Class({
     },
 
     get inFullscreen() {
-        let nb_monitors = global.screen.get_n_monitors();
+        let nb_monitors = this._screen.get_n_monitors();
         let inFullscreen = false;
         for (let i=0; i<nb_monitors; i++) {
-            if (global.screen.get_monitor_in_fullscreen(i)) {
+            if (this._screen.get_monitor_in_fullscreen(i)) {
                 inFullscreen = true;
                 break;
             }
@@ -200,25 +212,28 @@ const Caffeine = new Lang.Class({
     },
 
     _inhibitorAdded: function(proxy, sender, [object]) {
-        let inhibitor = new DBusSessionManagerInhibitorProxy(Gio.DBus.session,
+        this._sessionManager.GetInhibitorsRemote(Lang.bind(this, function([inhibitors]){
+            for(var i in inhibitors) {
+                let inhibitor = new DBusSessionManagerInhibitorProxy(Gio.DBus.session,
                                                              'org.gnome.SessionManager',
-                                                             object);
-        // Is the new inhibitor Caffeine ?
-        inhibitor.GetAppIdRemote(Lang.bind(this, function(app_id) {
-            if (app_id != '' && app_id == this._last_app) {
-                if (this._last_app == 'user')
-                    this._settings.set_boolean(USER_ENABLED_KEY, true);
-                this._apps.push(this._last_app);
-                this._cookies.push(this._last_cookie);
-                this._objects.push(object);
-                this._last_app = "";
-                this._last_cookie = "";
-                if (this._state === false) {
-                    this._state = true;
-                    this._icon.icon_name = EnabledIcon;
-                    if (this._settings.get_boolean(SHOW_NOTIFICATIONS_KEY) && !this.inFullscreen)
-                        Main.notify(_("Auto suspend and screensaver disabled"));
-                }
+                                                             inhibitors[i]);
+                inhibitor.GetAppIdRemote(Lang.bind(this, function(app_id) {
+                    if (app_id != '' && app_id == this._last_app) {
+                        if (this._last_app == 'user')
+                            this._settings.set_boolean(USER_ENABLED_KEY, true);
+                        this._apps.push(this._last_app);
+                        this._cookies.push(this._last_cookie);
+                        this._objects.push(object);
+                        this._last_app = "";
+                        this._last_cookie = "";
+                        if (this._state === false) {
+                            this._state = true;
+                            this._icon.icon_name = EnabledIcon;
+                            if (this._settings.get_boolean(SHOW_NOTIFICATIONS_KEY) && !this.inFullscreen)
+                                Main.notify(_("Auto suspend and screensaver disabled"));
+                        }
+                    }
+                }));
             }
         }));
     },
@@ -276,7 +291,7 @@ const Caffeine = new Lang.Class({
         }));
         // disconnect from signals
         if (this._settings.get_boolean(FULLSCREEN_KEY))
-            global.screen.disconnect(this._inFullscreenId);
+            this._screen.disconnect(this._inFullscreenId);
         if (this._inhibitorAddedId) {
             this._sessionManager.disconnectSignal(this._inhibitorAddedId);
             this._inhibitorAddedId = 0;
@@ -286,7 +301,7 @@ const Caffeine = new Lang.Class({
             this._inhibitorRemovedId = 0;
         }
         if (this._windowCreatedId) {
-            global.screen.get_display().disconnect(this._windowCreatedId);
+            this._display.disconnect(this._windowCreatedId);
             this._windowCreatedId = 0;
         }
         if (this._windowDestroyedId) {
