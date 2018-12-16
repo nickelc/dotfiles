@@ -3,8 +3,8 @@ set nocompatible
 call pathogen#infect()
 call pathogen#helptags()
 
-syntax on
 filetype plugin indent on
+syntax on
 
 set number
 set nobackup
@@ -32,6 +32,8 @@ set list listchars=tab:\ \ ,trail:·
 let mapleader=","
 let g:mapleader=","
 
+let g:csv_delim_test=",;|"
+let g:csv_headerline=0
 
 " Enable folding {{{
 "augroup fdm
