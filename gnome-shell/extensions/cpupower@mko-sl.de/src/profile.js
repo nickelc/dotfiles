@@ -23,34 +23,24 @@
  * along with gnome-shell extension cpupower.  If not, see
  * <http://www.gnu.org/licenses/>.
  *
- */
-const Lang = imports.lang;
+ */    
+// 32bit random number without 0
+const GenerateUUID = () => Math.floor(1 + Math.random() * 0xFFFFFFFE).toString();
 
-const GenerateUUID = function ()
-{
-    // 32bit random number without 0
-    return Math.floor(1 + Math.random() * 0xFFFFFFFE).toString();
-};
-
-var CPUFreqProfile = new Lang.Class({
-    Name: 'cpupower.CPUFreqProfile',
-
-    _init: function()
-    {
+var CPUFreqProfile = class CPUFreqProfile {
+    constructor() {
+        this.UUID = GenerateUUID();
         this.MinimumFrequency = 0;
         this.MaximumFrequency = 100;
         this.TurboBoost = true;
         this.Name = 'Default';
-        this.UUID = GenerateUUID();
-    },
+    }
 
-    save: function()
-    {
+    save() {
         return [this.MinimumFrequency, this.MaximumFrequency, this.TurboBoost, this.Name, this.UUID];
-    },
+    }
 
-    load: function(input)
-    {
+    load(input) {
         this.MinimumFrequency = input[0];
         this.MaximumFrequency = input[1];
         this.TurboBoost = input[2];
@@ -59,7 +49,7 @@ var CPUFreqProfile = new Lang.Class({
         if (input.length < 5 || !input[4])
         {
             this.UUID = GenerateUUID();
-            global.log("Generated UUID: " + this.UUID);
+            // global.log("Generated UUID: " + this.UUID);
             return true;
         }
         else
@@ -68,4 +58,4 @@ var CPUFreqProfile = new Lang.Class({
             return false;
         }
     }
-});
+}

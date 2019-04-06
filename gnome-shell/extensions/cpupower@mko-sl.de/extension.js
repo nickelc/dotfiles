@@ -31,43 +31,37 @@ const Convenience = Me.imports.src.convenience;
 const Main = imports.ui.main;
 
 const check_supported = Me.imports.src.utils.check_supported;
-const UnsupportedIndicator = Me.imports.src.unsupported.UnsupportedIndicator;
+const unsupported = Me.imports.src.unsupported;
 
 const check_installed = Me.imports.src.utils.check_installed;
-const NotInstalledIndicator = Me.imports.src.notinstalled.NotInstalledIndicator;
+const notinstalled = Me.imports.src.notinstalled;
 
-const CPUFreqIndicator = Me.imports.src.indicator.CPUFreqIndicator;
+const indicator = Me.imports.src.indicator;
 
-
-function init(meta)
-{
-    Convenience.initTranslations('gnome-shell-extension-cpupower');
-}
 
 let _indicator = null;
+var init = (meta) => {
+    Convenience.initTranslations('gnome-shell-extension-cpupower');
+};
 
-function _enableIndicator()
-{
-    Main.panel.addToStatusArea('cpupower', _indicator);
-    _indicator._enable();
-}
 
-function enable()
-{
-    try
-    {
-        check_supported(function(supported) {
-            if (!supported)
-            {
-                _indicator = new UnsupportedIndicator();
+const _enableIndicator = () => {
+    Main.panel.addToStatusArea('cpupower', _indicator._mainButton);
+    _indicator.enable();
+};
+
+var enable = () => {
+    try {
+        check_supported(supported => {
+            if (!supported) {
+                _indicator = new unsupported.UnsupportedIndicator();
                 _enableIndicator();
                 return;
             }
 
-            check_installed(function(installed) {
-                if (!installed)
-                {
-                    _indicator = new NotInstalledIndicator(function (success) {
+            check_installed(installed => {
+                if (!installed) {
+                    _indicator = new notinstalled.NotInstalledIndicator(function (success) {
                         if (success)
                         {
                             // reenable the extension to allow immediate operation.
@@ -75,27 +69,20 @@ function enable()
                             enable();
                         }
                     });
+                } else {
+                    _indicator = new indicator.CPUFreqIndicator();
                 }
-                else
-                {
-                    _indicator = new CPUFreqIndicator();
-                }
-
                 _enableIndicator();
             });
         });
-    }
-    catch (e)
-    {
+    } catch (e) {
         global.logError(e.message);
     }
-}
+};
 
-function disable()
-{
-    if (_indicator != null)
-    {
-        _indicator._disable();
+var disable = () => {
+    if (_indicator != null) {
+        _indicator.disable();
         _indicator.destroy();
     }
-}
+};

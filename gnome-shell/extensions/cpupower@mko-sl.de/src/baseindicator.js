@@ -27,10 +27,10 @@
  */
 
 // Gnome imports
-const Lang = imports.lang;
 const PanelMenu = imports.ui.panelMenu;
 const St = imports.gi.St;
 const Gio = imports.gi.Gio;
+const GObject = imports.gi.GObject;
 const PopupMenu = imports.ui.popupMenu;
 const Main = imports.ui.main;
 const Clutter = imports.gi.Clutter;
@@ -41,14 +41,12 @@ const Me = ExtensionUtils.getCurrentExtension();
 const Convenience = Me.imports.src.convenience;
 const SETTINGS_ID = 'org.gnome.shell.extensions.cpupower';
 
-var CPUFreqBaseIndicator = new Lang.Class({
-    Name: 'cpupower.CPUFreqBaseIndicator',
-    Extends: PanelMenu.Button,
-    Abstract: true,
+var CPUFreqBaseIndicator = class CPUFreqBaseIndicator {
 
-    _init: function()
-    {
-        this.parent(null, 'cpupower');
+    constructor() {
+        this._mainButton = new PanelMenu.Button(null, 'cpupower');
+        this.menu = this._mainButton.menu;
+        this.actor = this._mainButton.actor;
 
         this.settings = Convenience.getSettings(SETTINGS_ID);
 
@@ -71,24 +69,23 @@ var CPUFreqBaseIndicator = new Lang.Class({
         this.hbox.add_actor(PopupMenu.arrowIcon(St.Side.BOTTOM));
 
 
-        this.settings.connect('changed', this._createMenu.bind(this));
-        this._createMenu();
-    },
+        this.settings.connect('changed', () => this.createMenu());
+    }
 
-    _createMenu: function()
-    {
+    createMenu() {
         this.menu.removeAll(); // clear the menu in case we are recreating the menu
         this.section = new PopupMenu.PopupMenuSection();
         this.menu.addMenuItem(this.section);
-    },
+    }
 
-    _disable: function()
-    {
+    disable() {
         this.actor.remove_actor(this.hbox);
-    },
+    }
 
-    _enable: function()
-    {
+    enable() {
         this.actor.add_actor(this.hbox);
     }
-});
+    destroy() {
+        this._mainButton.destroy();
+    }
+}

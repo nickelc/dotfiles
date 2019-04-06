@@ -27,33 +27,28 @@
  */
 
 // Gnome imports
-const Lang = imports.lang;
 const PopupMenu = imports.ui.popupMenu;
 
 // Relative and misc imports and definitions
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
 const Convenience = Me.imports.src.convenience;
-const CPUFreqBaseIndicator = Me.imports.src.baseindicator.CPUFreqBaseIndicator;
+const baseindicator = Me.imports.src.baseindicator;
 const attempt_installation = Me.imports.src.utils.attempt_installation;
 
 const SETTINGS_ID = 'org.gnome.shell.extensions.cpupower';
 const Gettext = imports.gettext.domain('gnome-shell-extension-cpupower');
 const _ = Gettext.gettext;
 
-var NotInstalledIndicator = new Lang.Class({
-    Name: 'cpupower.CPUFreqNotInstalledIndicator',
-    Extends: CPUFreqBaseIndicator,
-
-    _init: function(done)
-    {
+var NotInstalledIndicator = class NotInstalledIndicator extends baseindicator.CPUFreqBaseIndicator {
+    constructor(done) {
+        super();
         this._done = done;
-        this.parent();
-    },
+        this.createMenu();
+    }
 
-    _createMenu: function()
-    {
-        this.parent();
+    createMenu() {
+        super.createMenu();
         let notInstalledLabel = new PopupMenu.PopupMenuItem(_('Installation required.'), {reactive: false});
         this.section.addMenuItem(notInstalledLabel);
 
@@ -63,5 +58,5 @@ var NotInstalledIndicator = new Lang.Class({
         this.attemptInstallationLabel = new PopupMenu.PopupMenuItem(_('Attempt installation'), {reactive: true});
         this.attemptInstallationLabel.connect('activate', attempt_installation.bind(null, this._done));
         this.section.addMenuItem(this.attemptInstallationLabel);
-    },
-});
+    }
+}
