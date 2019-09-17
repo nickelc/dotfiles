@@ -10,3 +10,5 @@
 	tool = meld
 [push]
 	default = simple
+[alias]
+	st = status
