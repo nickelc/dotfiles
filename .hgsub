@@ -15,4 +15,4 @@ vim/bundle/rust.vim = [git]https://github.com/rust-lang/rust.vim.git
 vim/bundle/syntastic = [git]https://github.com/vim-syntastic/syntastic.git
 vim/bundle/tcomment = [git]https://github.com/tomtom/tcomment_vim.git
 vim/bundle/toml = [git]https://github.com/cespare/vim-toml.git
-vim/bundle/YouCompleteMe = [git]https://github.com/Valloric/YouCompleteMe.git
+vim/bundle/YouCompleteMe = [git]https://github.com/ycm-core/YouCompleteMe.git
