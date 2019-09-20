@@ -8,9 +8,10 @@
     "3.26", 
     "3.28", 
     "3.30", 
+    "3.34", 
     "3.32"
   ], 
   "url": "https://github.com/martin31821/cpupower", 
   "uuid": "cpupower@mko-sl.de", 
-  "version": 13
+  "version": 15
 }
