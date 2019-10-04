@@ -52,6 +52,7 @@ nnoremap tl :tablast<CR>
 " }}}
 
 let g:ycm_rust_src_path="/usr/lib/rustlib/src/rust/src"
+let g:ycm_autoclose_preview_window_after_completion = 1
 
 if executable("rustup") && executable("rustc")
     let g:ycm_rust_src_path=expand(substitute(system("rustc --print sysroot"), '\n\+$', '', '') . "/lib/rustlib/src/rust/src")
