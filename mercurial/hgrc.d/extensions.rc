@@ -26,5 +26,5 @@ schemes =
 shelve =
 transplant =
 
-git   = ~/.mercurial/hgext/hg-git/hggit
-svn   = ~/.mercurial/hgext/hg-subversion/hgsubversion
+git   = !~/.mercurial/hgext/hg-git/hggit
+svn   = !~/.mercurial/hgext/hg-subversion/hgsubversion
