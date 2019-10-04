@@ -12,3 +12,7 @@
 	default = simple
 [alias]
 	st = status
+[diff]
+	tool = meld
+[difftool]
+	prompt = false
