@@ -1,48 +1,45 @@
-[submodule "vim/pathogen"]
-	path = vim/pathogen
-	url = https://github.com/tpope/vim-pathogen.git
-[submodule "vim/bundle/bufferline"]
-	path = vim/bundle/bufferline
+[submodule "vim/pack/plugins/start/bufferline"]
+	path = vim/pack/plugins/start/bufferline
 	url = https://github.com/bling/vim-bufferline.git
-[submodule "vim/bundle/csv"]
-	path = vim/bundle/csv
+[submodule "vim/pack/plugins/start/csv"]
+	path = vim/pack/plugins/start/csv
 	url = https://github.com/chrisbra/csv.vim.git
-[submodule "vim/bundle/gnupg"]
-	path = vim/bundle/gnupg
+[submodule "vim/pack/plugins/start/gnupg"]
+	path = vim/pack/plugins/start/gnupg
 	url = https://github.com/jamessan/vim-gnupg.git
-[submodule "vim/bundle/indentLine"]
-	path = vim/bundle/indentLine
+[submodule "vim/pack/plugins/start/indentLine"]
+	path = vim/pack/plugins/start/indentLine
 	url = https://github.com/Yggdroot/indentLine.git
-[submodule "vim/bundle/latex"]
-	path = vim/bundle/latex
+[submodule "vim/pack/plugins/start/latex"]
+	path = vim/pack/plugins/start/latex
 	url = https://github.com/gerw/vim-latex-suite.git
-[submodule "vim/bundle/lawrencium"]
-	path = vim/bundle/lawrencium
+[submodule "vim/pack/plugins/start/lawrencium"]
+	path = vim/pack/plugins/start/lawrencium
 	url = https://github.com/ludovicchabant/vim-lawrencium.git
-[submodule "vim/bundle/markdown-composer"]
-	path = vim/bundle/markdown-composer
+[submodule "vim/pack/plugins/start/markdown-composer"]
+	path = vim/pack/plugins/start/markdown-composer
 	url = https://github.com/euclio/vim-markdown-composer.git
-[submodule "vim/bundle/nerdtree"]
-	path = vim/bundle/nerdtree
+[submodule "vim/pack/plugins/start/nerdtree"]
+	path = vim/pack/plugins/start/nerdtree
 	url = https://github.com/scrooloose/nerdtree.git
-[submodule "vim/bundle/nerdtree-git-plugin"]
-	path = vim/bundle/nerdtree-git-plugin
+[submodule "vim/pack/plugins/start/nerdtree-git-plugin"]
+	path = vim/pack/plugins/start/nerdtree-git-plugin
 	url = https://github.com/Xuyuanp/nerdtree-git-plugin.git
-[submodule "vim/bundle/numbertoggle"]
-	path = vim/bundle/numbertoggle
+[submodule "vim/pack/plugins/start/numbertoggle"]
+	path = vim/pack/plugins/start/numbertoggle
 	url = https://github.com/jeffkreeftmeijer/vim-numbertoggle.git
-[submodule "vim/bundle/rust.vim"]
-	path = vim/bundle/rust.vim
+[submodule "vim/pack/plugins/start/rust.vim"]
+	path = vim/pack/plugins/start/rust.vim
 	url = https://github.com/rust-lang/rust.vim.git
-[submodule "vim/bundle/syntastic"]
-	path = vim/bundle/syntastic
+[submodule "vim/pack/plugins/start/syntastic"]
+	path = vim/pack/plugins/start/syntastic
 	url = https://github.com/vim-syntastic/syntastic.git
-[submodule "vim/bundle/tcomment"]
-	path = vim/bundle/tcomment
+[submodule "vim/pack/plugins/start/tcomment"]
+	path = vim/pack/plugins/start/tcomment
 	url = https://github.com/tomtom/tcomment_vim.git
-[submodule "vim/bundle/toml"]
-	path = vim/bundle/toml
+[submodule "vim/pack/plugins/start/toml"]
+	path = vim/pack/plugins/start/toml
 	url = https://github.com/cespare/vim-toml.git
-[submodule "vim/bundle/YouCompleteMe"]
-	path = vim/bundle/YouCompleteMe
+[submodule "vim/pack/plugins/start/YouCompleteMe"]
+	path = vim/pack/plugins/start/YouCompleteMe
 	url = https://github.com/ycm-core/YouCompleteMe.git
