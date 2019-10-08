@@ -44,6 +44,13 @@ let g:syntastic_mode_map = {
             \ }
 " }}}
 
+" tagbar {{{
+let g:tagbar_autofocus = 1
+let g:tagbar_autoshowtag = 1
+
+nmap <F8> :TagbarToggle<CR>
+" }}}
+
 " indentLine {{{
 let g:indentLine_leadingSpaceEnabled = 0
 let g:indentLine_leadingSpaceChar = '·'
