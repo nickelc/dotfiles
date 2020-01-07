@@ -19,6 +19,7 @@ export WINEDLLOVERRIDES="winemenubuilder.exe=d;mscoree=d;mshtml=d"
 # Aliases
 alias chmod='chmod -c'
 alias chown='chown -c'
+alias gitk=tig
 
 alias t='todo.sh'
 alias i='TODO_TYPE=ideas todo.sh'
