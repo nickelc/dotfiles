@@ -23,6 +23,9 @@ set pastetoggle=<F2>
 set modeline
 set modelines=10
 
+autocmd FileType typescript setlocal shiftwidth=2 softtabstop=2 expandtab
+autocmd FileType yaml setlocal shiftwidth=2 softtabstop=2 expandtab
+
 " Display tabs and trailing space visually
 set list listchars=tab:\ \ ,trail:·
 
