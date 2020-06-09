@@ -2,8 +2,9 @@
 	name = Constantin Nickel
 	email = constantin.nickel@gmail.com
 [core]
-	pager = LESS='FSRX' less
+	pager = delta --hunk-color=red
 	excludesfile = /home/constantin/.gitignore.global
+	whitespace = tab-in-indent,blank-at-eol
 [color]
 	ui = auto
 [merge]
@@ -16,3 +17,24 @@
 	tool = meld
 [difftool]
 	prompt = false
+[gui]
+	spellingdictionary = none
+[color "diff-highlight"]
+	oldNormal = red bold
+	oldHighlight = red bold 52
+	newNormal = green bold
+	newHighlight = green bold 22
+[color "diff"]
+	meta = 11
+	frag = magenta bold
+	commit = yellow bold
+	old = red bold
+	new = green bold
+	whitespace = red reverse
+[rebase]
+	autoStash = true
+	autoSquash = true
+[interactive]
+	diffFilter = delta --color-only
+[pull]
+	ff = only
