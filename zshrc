@@ -16,6 +16,8 @@ bindkey -v
 export PATH="$HOME/.cargo/bin:$PATH"
 export WINEDLLOVERRIDES="winemenubuilder.exe=d;mscoree=d;mshtml=d"
 
+eval "$(starship init zsh)"
+
 # Aliases
 alias chmod='chmod -c'
 alias chown='chown -c'
