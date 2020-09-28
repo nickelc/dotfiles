@@ -18,6 +18,9 @@ export PATH="$HOME/.cargo/bin:$PATH"
 export WINEDLLOVERRIDES="winemenubuilder.exe=d;mscoree=d;mshtml=d"
 
 eval "$(starship init zsh)"
+eval "$(zoxide init zsh --cmd y)"
+
+source ~/.config/broot/launcher/bash/br
 
 # Aliases
 alias chmod='chmod -c'
