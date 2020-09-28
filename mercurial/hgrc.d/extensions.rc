@@ -1,17 +1,14 @@
 [extensions]
 bookmarks =
 blackbox = !
-children =
 churn =
 color =
 convert =
 eol =
 extdiff =
-graphlog =
 hgk =
 highlight =
 histedit =
-inotify = !
 interhg =
 largefiles =
 patchbomb =
@@ -20,11 +17,6 @@ pager =
 progress =
 purge =
 rebase =
-record =
 relink =
 schemes =
 shelve =
-transplant =
-
-git   = !~/.mercurial/hgext/hg-git/hggit
-svn   = !~/.mercurial/hgext/hg-subversion/hgsubversion

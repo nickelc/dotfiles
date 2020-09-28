@@ -1,4 +1,1 @@
 [subpaths]
-https://bitbucket.org/durin42/hg-git        = ssh://hg@bitbucket.org/nickelc/hg-git
-https://bitbucket.org/durin42/hgsubversion  = ssh://hg@bitbucket.org/nickelc/hg-subversion
-https://bitbucket.org/lantiq/onsub          = ssh://hg@bitbucket.org/nickelc/hg-onsub
