@@ -1,3 +1,6 @@
+[submodule "vim/pack/plugins/start/ack"]
+	path = vim/pack/plugins/start/ack
+	url = https://github.com/mileszs/ack.vim.git
 [submodule "vim/pack/plugins/start/bufferline"]
 	path = vim/pack/plugins/start/bufferline
 	url = https://github.com/bling/vim-bufferline.git
