@@ -13,6 +13,8 @@
 	default = simple
 [alias]
 	st = status
+	co = checkout
+	ci = commit
 [diff]
 	tool = meld
 [difftool]
