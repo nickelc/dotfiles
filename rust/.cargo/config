@@ -1,0 +1,14 @@
+[cargo-new]
+name = "Constantin Nickel"
+email = "constantin.nickel@gmail.com"
+
+[alias]
+c = "check"
+cc = "clean"
+ch = "check"
+up = "update"
+fmtc = "fmt -- --check"
+fmtcdoc = "fmtc --config format_code_in_doc_comments=true"
+fmtdoc = "fmt -- --config format_code_in_doc_comments=true"
+ce = "check --example"
+re = "run --example"
