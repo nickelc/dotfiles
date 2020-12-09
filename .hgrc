@@ -1,0 +1,100 @@
+[ui]
+editor = vim
+username = Constantin Nickel <constantin.nickel@gmail.com>
+merge = meld
+#ignore.other = ~/.hgignore
+
+[extdiff]
+cmd.meld = meld
+
+[diff]
+git = true
+
+[mq]
+secret = true
+
+[pager]
+pager = LESS='FSRX' less
+
+[subrepos]
+git:allowed = true
+
+[web]
+cacerts = /etc/ssl/certs/ca-certificates.crt
+
+# alias {{{
+[alias]
+qlog = log -r qbase:qtip
+nudge = push --rev .
+patch = import --no-commit
+shortlog = log --template '{rev} {node|short} | {date|isodatesec} | {author|user}: {desc|strip|firstline}\n'
+transplant = transplant --log
+glog = log -G
+, = glog -l15 --template '\033[0;33m{rev} \033[0;37m{desc|firstline|fill68} \033[1;30m({date|age} by {author|person})\033[0m \033[0;33m{tags}\033[0m \033[0;37m{branches}\033[37;40m\033[0m\n\n'
+
+dlog = log --style=/home/constantin/.hgstyles/cli-styles/map-cmdline.dlog
+nlog = log --style=/home/constantin/.hgstyles/cli-styles/map-cmdline.nlog
+slog = log --style=/home/constantin/.hgstyles/cli-styles/map-cmdline.slog
+sglog = glog --style=/home/constantin/.hgstyles/cli-styles/map-cmdline.sglog
+# }}}
+
+# color {{{
+[color]
+status.modified = magenta bold
+status.added = green bold
+status.removed = red bold
+status.deleted = cyan bold
+status.unknown = blue bold
+status.ignored = white bold
+# }}}
+
+# hooks {{{
+[hooks]
+pretxncommit.eol = python:hgext.eol.hook
+pretxnchangegroup.eol = python:hgext.eol.hook
+# }}}
+
+# eol & patterns {{{
+[eol]
+native = LF
+only-consistent = False
+
+[patterns]
+**.py = native
+**.java = native
+**.xml = native
+**.properties = native
+# }}}
+
+# extensions {{{
+[extensions]
+bookmarks =
+blackbox = !
+churn =
+color =
+convert =
+eol =
+extdiff =
+hgk =
+highlight =
+histedit =
+interhg =
+largefiles =
+patchbomb =
+mq =
+pager =
+progress =
+purge =
+rebase =
+relink =
+schemes =
+shelve =
+# }}}
+
+# merge-tools {{{
+[merge-tools]
+threesome.executable = vim
+threesome.args = -f $base $local $other $output -c 'ThreesomeInit'
+threesome.premerge = keep
+#threesome.priority = 1
+# }}}
