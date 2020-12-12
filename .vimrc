@@ -44,7 +44,18 @@ Plug 'vim-syntastic/syntastic'
 Plug 'rust-lang/rust.vim'
 Plug 'mileszs/ack.vim'
 Plug 'neoclide/coc.nvim', {'branch': 'release'}
+
+Plug 'gruvbox-community/gruvbox'
+Plug 'joshdick/onedark.vim'
 call plug#end()
+" }}}
+
+" Theme & Colors {{{
+let g:gruvbox_contrast_dark = 'hard'
+let g:gruvbox_invert_selection = 0
+
+colorscheme gruvbox
+set background=dark
 " }}}
 
 " Auto-commands {{{
