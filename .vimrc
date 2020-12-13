@@ -42,7 +42,10 @@ Plug 'cespare/vim-toml'
 Plug 'vim-airline/vim-airline'
 Plug 'vim-syntastic/syntastic'
 Plug 'rust-lang/rust.vim'
-Plug 'mileszs/ack.vim'
+Plug 'tpope/vim-fugitive'
+Plug 'junegunn/fzf'
+Plug 'junegunn/fzf.vim'
+Plug 'stsewd/fzf-checkout.vim'
 Plug 'neoclide/coc.nvim', {'branch': 'release'}
 
 Plug 'gruvbox-community/gruvbox'
@@ -123,11 +126,22 @@ nmap <Leader>f :NERDTreeToggle<Enter>
 nnoremap <silent> <Leader>v :NERDTreeFind<CR>
 " }}}
 
+" fzf & fzf-checkout {{{
+let g:fzf_layout = { 'window': { 'width': 0.8, 'height': 0.8 } }
+let $FZF_DEFAULT_OPTS='--reverse'
+let g:fzf_branch_actions = {
+    \ 'rebase': {
+    \   'confirm': v:false,
+    \ },
+    \}
+" }}}
+
 " airline {{{
 if !exists('g:airline_symbols')
     let g:airline_symbols = {}
 endif
 
+let g:airline_symbols.branch = ''
 let g:airline_symbols.maxlinenr = ''
 " }}}
 
@@ -160,27 +174,6 @@ let g:tagbar_autofocus = 1
 let g:tagbar_autoshowtag = 1
 
 nmap <F8> :TagbarToggle<CR>
-" }}}
-
-" ack {{{
-" Use ripgrep for searching ⚡️
-" Options include:
-" --vimgrep -> Needed to parse the rg response properly for ack.vim
-" --type-not sql -> Avoid huge sql file dumps as it slows down the search
-" --smart-case -> Search case insensitive if all lowercase pattern, Search case sensitively otherwise
-let g:ackprg = 'rg --vimgrep --type-not sql --smart-case'
-
-" Auto close the Quickfix list after pressing '<enter>' on a list item
-let g:ack_autoclose = 1
-
-" Any empty ack search will search for the work the cursor is on
-let g:ack_use_cword_for_empty_search = 1
-
-" Don't jump to first match
-cnoreabbrev Ack Ack!
-
-" Maps <leader>/ so we're ready to type the search keyword
-nnoremap <Leader>/ :Ack!<Space>
 " }}}
 
 " indentLine {{{
