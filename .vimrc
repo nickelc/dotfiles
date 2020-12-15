@@ -2,7 +2,7 @@ syntax on
 filetype plugin indent on
 
 " Basic settings and variables {{{
-set number
+set number relativenumber
 set nowrap
 set noerrorbells
 set tabstop=4 softtabstop=4
@@ -28,7 +28,6 @@ set colorcolumn=80
 set list listchars=tab:\ \ ,trail:·
 
 let mapleader=","
-let g:mapleader=","
 " }}}
 
 " Plugins {{{
@@ -36,13 +35,16 @@ call plug#begin('~/.vim/plugged')
 Plug 'preservim/nerdtree'
 Plug 'Xuyuanp/nerdtree-git-plugin'
 Plug 'preservim/tagbar'
+Plug 'vim-airline/vim-airline'
+
 Plug 'jeffkreeftmeijer/vim-numbertoggle'
 Plug 'Yggdroot/indentLine'
 Plug 'tomtom/tcomment_vim'
-Plug 'cespare/vim-toml'
-Plug 'vim-airline/vim-airline'
+
 Plug 'vim-syntastic/syntastic'
 Plug 'rust-lang/rust.vim'
+Plug 'cespare/vim-toml'
+
 Plug 'tpope/vim-fugitive'
 Plug 'junegunn/fzf'
 Plug 'junegunn/fzf.vim'
@@ -67,6 +69,7 @@ highlight qfFileName guifg=#aed75f
 " }}}
 
 " Auto-commands {{{
+autocmd FileType json setlocal shiftwidth=2 softtabstop=2 expandtab
 autocmd FileType typescript setlocal shiftwidth=2 softtabstop=2 expandtab
 autocmd FileType yaml setlocal shiftwidth=2 softtabstop=2 expandtab
 " }}}
