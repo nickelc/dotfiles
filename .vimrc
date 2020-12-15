@@ -41,7 +41,6 @@ Plug 'jeffkreeftmeijer/vim-numbertoggle'
 Plug 'Yggdroot/indentLine'
 Plug 'tomtom/tcomment_vim'
 
-Plug 'vim-syntastic/syntastic'
 Plug 'rust-lang/rust.vim'
 Plug 'cespare/vim-toml'
 
@@ -157,30 +156,6 @@ endif
 
 let g:airline_symbols.branch = ''
 let g:airline_symbols.maxlinenr = ''
-" }}}
-
-" Syntastic {{{
-" set statusline+=%#warningmsg#
-" set statusline+=%{SyntasticStatuslineFlag()}
-" set statusline+=%*
-
-let g:syntastic_always_populate_loc_list = 1
-let g:syntastic_auto_loc_list = 1
-let g:syntastic_check_on_open = 1
-let g:syntastic_check_on_wq = 0
-
-let g:syntastic_error_symbol         = '✗'
-let g:syntastic_warning_symbol       = '⚠'
-let g:syntastic_style_error_symbol   = '✠'
-let g:syntastic_style_warning_symbol = '≈'
-
-let g:syntastic_rust_checkers = ["cargo"]
-
-let g:syntastic_mode_map = {
-            \ "mode": "passive",
-            \ "active_filetypes": [],
-            \ "passive_filetype": []
-            \ }
 " }}}
 
 " tagbar {{{
