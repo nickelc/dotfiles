@@ -23,6 +23,7 @@ set scrolloff=8
 set mouse=a
 set modeline
 set modelines=10
+set colorcolumn=80
 " Display tabs and trailing space visually
 set list listchars=tab:\ \ ,trail:·
 
@@ -59,6 +60,10 @@ let g:gruvbox_invert_selection = 0
 
 colorscheme gruvbox
 set background=dark
+
+highlight LineNr guifg=#5eacd3
+highlight netrwDir guifg=#5eacd3
+highlight qfFileName guifg=#aed75f
 " }}}
 
 " Auto-commands {{{
