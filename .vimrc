@@ -96,6 +96,12 @@ nmap <silent> gr <Plug>(coc-references)
 " nmap <silent> ga <Plug>(coc-codeaction)
 nmap <silent> ga :CocAction<CR>
 
+" Git
+nnoremap <leader>gs :G<CR>
+nnoremap <leader>gc :GBranches<CR>
+nnoremap <leader>gf :diffget //2<CR>
+nnoremap <leader>gj :diffget //3<CR>
+
 "changes with less keystrokes
 " nnoremap . :
 " Space to toggle folds.
