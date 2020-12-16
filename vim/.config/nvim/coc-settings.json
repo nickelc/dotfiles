@@ -1,3 +1,13 @@
 {
+  "json.schemas": [
+    {
+      "fileMatch": ["action.yml"],
+      "url": "https://json.schemastore.org/github-action"
+    },
+    {
+      "fileMatch": ["*/.github/workflows/*.yml"],
+      "url": "https://json.schemastore.org/github-workflow"
+    }
+  ],
   "rust-analyzer.serverPath": "rust-analyzer"
 }
