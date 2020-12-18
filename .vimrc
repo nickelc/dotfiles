@@ -104,6 +104,10 @@ nnoremap <leader>gc :GBranches<CR>
 nnoremap <leader>gf :diffget //2<CR>
 nnoremap <leader>gj :diffget //3<CR>
 
+" fzf
+nnoremap <C-p> :GFiles<CR>
+nnoremap <leader>pf :Files<CR>
+
 "changes with less keystrokes
 " nnoremap . :
 " Space to toggle folds.
