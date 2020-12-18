@@ -108,6 +108,12 @@ nnoremap <leader>gj :diffget //3<CR>
 nnoremap <C-p> :GFiles<CR>
 nnoremap <leader>pf :Files<CR>
 
+" Command aliases for fat-fingering
+command! Q q
+command! Qa qa
+command! W w
+command! Wq wq
+
 "changes with less keystrokes
 " nnoremap . :
 " Space to toggle folds.
