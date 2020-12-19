@@ -25,6 +25,11 @@ eval "$(zoxide init zsh --cmd y)"
 
 source $HOME/.config/broot/launcher/bash/br
 
+# Keymaps for the idiotic keyboard layout
+bindkey -s ł '|'
+bindkey -s » '<'
+bindkey -s « '>'
+
 # Aliases
 alias chmod='chmod -c'
 alias chown='chown -c'
