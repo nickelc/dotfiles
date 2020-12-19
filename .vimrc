@@ -75,6 +75,14 @@ autocmd FileType yaml setlocal shiftwidth=2 softtabstop=2 expandtab
 
 " Keyboard Shortcuts and remappings {{{
 
+" Keymaps for the idiotic keyboard layout
+noremap ł \|
+noremap » <
+noremap « >
+noremap! ł \|
+noremap! » <
+noremap! « >
+
 " CoC completion {{{
 inoremap <silent><expr> <TAB>
       \ pumvisible() ? "\<C-n>" :
