@@ -127,6 +127,17 @@ command! Wq wq
 " Space to toggle folds.
 nnoremap <Space> za
 vnoremap <Space> za
+
+" Window navigation
+nmap <silent> <leader>h :wincmd h<CR>
+nmap <silent> <leader>j :wincmd j<CR>
+nmap <silent> <leader>k :wincmd k<CR>
+nmap <silent> <leader>l :wincmd l<CR>
+nmap <silent> <leader><Left> :wincmd h<CR>
+nmap <silent> <leader><Down> :wincmd j<CR>
+nmap <silent> <leader><Up> :wincmd k<CR>
+nmap <silent> <leader><Right> :wincmd l<CR>
+
 " Tabs - Navigation
 nnoremap th :tabfirst<CR>
 nnoremap tj :tabprev<CR>
