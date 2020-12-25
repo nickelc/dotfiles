@@ -68,6 +68,7 @@ highlight qfFileName guifg=#aed75f
 " }}}
 
 " Auto-commands {{{
+autocmd FileType gitconfig setlocal expandtab!
 autocmd FileType json setlocal shiftwidth=2 softtabstop=2 expandtab
 autocmd FileType typescript setlocal shiftwidth=2 softtabstop=2 expandtab
 autocmd FileType yaml setlocal shiftwidth=2 softtabstop=2 expandtab
