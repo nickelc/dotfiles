@@ -39,3 +39,6 @@
 	diffFilter = delta --color-only
 [pull]
 	ff = only
+[delta]
+	file-style = bold yellow
+	file-decoration-style = yellow ul
