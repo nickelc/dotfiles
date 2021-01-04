@@ -139,6 +139,10 @@ nmap <silent> <leader><Down> :wincmd j<CR>
 nmap <silent> <leader><Up> :wincmd k<CR>
 nmap <silent> <leader><Right> :wincmd l<CR>
 
+" Window resize
+nnoremap <Leader>+ :vertical resize +5<CR>
+nnoremap <Leader>- :vertical resize -5<CR>
+
 " Tabs - Navigation
 nnoremap th :tabfirst<CR>
 nnoremap tj :tabprev<CR>
