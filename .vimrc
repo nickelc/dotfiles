@@ -2,9 +2,12 @@ syntax on
 filetype plugin indent on
 
 " Basic settings and variables {{{
+set exrc
 set number relativenumber
 set nowrap
 set noerrorbells
+set nohlsearch
+set hidden
 set tabstop=4 softtabstop=4
 set shiftwidth=4
 set expandtab
@@ -24,6 +27,10 @@ set mouse=a
 set modeline
 set modelines=10
 set colorcolumn=80
+set signcolumn=yes
+
+set cmdheight=2
+
 " Display tabs and trailing space visually
 set list listchars=tab:\ \ ,trail:·
 
