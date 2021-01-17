@@ -34,7 +34,7 @@ set cmdheight=2
 " Display tabs and trailing space visually
 set list listchars=tab:\ \ ,trail:·
 
-let mapleader=","
+let mapleader=" "
 " }}}
 
 " Plugins {{{
@@ -133,8 +133,8 @@ command! Wq wq
 "changes with less keystrokes
 " nnoremap . :
 " Space to toggle folds.
-nnoremap <Space> za
-vnoremap <Space> za
+" nnoremap <Space> za
+" vnoremap <Space> za
 
 " Window navigation
 nmap <silent> <leader>h :wincmd h<CR>
