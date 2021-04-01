@@ -20,6 +20,7 @@ export EDITOR=nvim
 export PATH="$HOME/.cargo/bin:$PATH"
 export WINEDLLOVERRIDES="winemenubuilder.exe=d;mscoree=d;mshtml=d"
 
+prompt off
 eval "$(starship init zsh)"
 eval "$(zoxide init zsh --cmd y)"
 
