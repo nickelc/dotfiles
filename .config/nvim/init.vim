@@ -142,6 +142,9 @@ nnoremap <C-p> :GFiles<CR>
 nnoremap <leader>pf :Files<CR>
 nnoremap <leader>fg :Rg<CR>
 
+" tagbar
+nmap <F8> :TagbarToggle<CR>
+
 " Command aliases for fat-fingering
 command! Q q
 command! Qa qa
@@ -237,6 +240,12 @@ let g:indentLine_leadingSpaceChar = '·'
 " numbertoggle {{{
 :nnoremap <silent> <C-n> :set relativenumber!<CR>
 " }}}
+" }}}
+
+" tagbar {{{
+let g:tagbar_autofocus = 1
+let g:tagbar_autoshowtag = 1
+let g:tagbar_sort = 0
 " }}}
 
 " vim: set sw=4 sts=4 et fdm=marker:
