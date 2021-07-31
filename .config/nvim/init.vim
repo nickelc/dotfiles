@@ -43,6 +43,7 @@ Plug 'preservim/nerdtree'
 Plug 'Xuyuanp/nerdtree-git-plugin'
 Plug 'preservim/tagbar'
 Plug 'vim-airline/vim-airline'
+Plug 'mbbill/undotree'
 
 Plug 'jeffkreeftmeijer/vim-numbertoggle'
 Plug 'Yggdroot/indentLine'
@@ -52,6 +53,7 @@ Plug 'rust-lang/rust.vim'
 Plug 'cespare/vim-toml'
 
 Plug 'tpope/vim-fugitive'
+Plug 'junegunn/gv.vim'
 Plug 'junegunn/fzf'
 Plug 'junegunn/fzf.vim'
 Plug 'stsewd/fzf-checkout.vim'
@@ -144,6 +146,9 @@ nnoremap <leader>fg :Rg<CR>
 
 " tagbar
 nmap <F8> :TagbarToggle<CR>
+
+" Undo
+nnoremap <leader>u :UndotreeShow<CR>
 
 " Command aliases for fat-fingering
 command! Q q
