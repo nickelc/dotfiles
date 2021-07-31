@@ -83,6 +83,23 @@ autocmd FileType yaml setlocal shiftwidth=2 softtabstop=2 expandtab
 
 " Keyboard Shortcuts and remappings {{{
 
+" yank till eol; behave like D and C
+nnoremap Y y$
+
+" Keep it centered
+nnoremap n nzzzv
+nnoremap N Nzzzv
+nnoremap J mzJ`z
+
+" Undo break points
+inoremap . .<C-g>u
+inoremap , ,<C-g>u
+inoremap ? ?<C-g>u
+
+" Moving text
+vnoremap J :m '>+1<CR>gv=gv
+vnoremap K :m '<-2<CR>gv=gv
+
 " Keymaps for the idiotic keyboard layout
 noremap ł \|
 noremap » <
@@ -123,6 +140,7 @@ nnoremap <leader>gj :diffget //3<CR>
 " fzf
 nnoremap <C-p> :GFiles<CR>
 nnoremap <leader>pf :Files<CR>
+nnoremap <leader>fg :Rg<CR>
 
 " Command aliases for fat-fingering
 command! Q q
