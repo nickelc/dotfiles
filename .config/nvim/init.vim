@@ -208,6 +208,9 @@ nnoremap <silent> <Leader>v :NERDTreeFind<CR>
 
 " CoC {{{
 let g:coc_global_extensions = ['coc-rust-analyzer', 'coc-json', 'coc-yaml', 'coc-vimlsp']
+let g:coc_global_extensions += ['coc-toml', 'coc-highlight']
+
+autocmd CursorHold * call CocActionAsync('highlight')
 "
 
 " fzf & fzf-checkout {{{
