@@ -10,6 +10,8 @@
 	tool = meld
 [push]
 	default = simple
+[init]
+	defaultBranch = master
 [alias]
 	st = status
 	co = checkout
