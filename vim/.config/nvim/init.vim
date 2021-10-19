@@ -54,10 +54,12 @@ Plug 'cespare/vim-toml'
 
 Plug 'tpope/vim-fugitive'
 Plug 'junegunn/gv.vim'
-Plug 'junegunn/fzf'
-Plug 'junegunn/fzf.vim'
-Plug 'stsewd/fzf-checkout.vim'
 Plug 'neoclide/coc.nvim', {'branch': 'release'}
+
+" telescope requirements...
+Plug 'nvim-lua/plenary.nvim'
+Plug 'nvim-telescope/telescope.nvim'
+Plug 'nvim-telescope/telescope-fzf-native.nvim', { 'do': 'make' }
 
 Plug 'gruvbox-community/gruvbox'
 Plug 'joshdick/onedark.vim'
@@ -135,14 +137,9 @@ nmap <silent> ga :CocAction<CR>
 
 " Git
 nnoremap <leader>gs :G<CR>
-nnoremap <leader>gc :GBranches<CR>
+nnoremap <leader>gc :Telescope git_branches<CR>
 nnoremap <leader>gf :diffget //2<CR>
 nnoremap <leader>gj :diffget //3<CR>
-
-" fzf
-nnoremap <C-p> :GFiles<CR>
-nnoremap <leader>pf :Files<CR>
-nnoremap <leader>fg :Rg<CR>
 
 " tagbar
 nmap <F8> :TagbarToggle<CR>
@@ -212,16 +209,6 @@ let g:coc_global_extensions += ['coc-toml', 'coc-highlight']
 
 autocmd CursorHold * call CocActionAsync('highlight')
 "
-
-" fzf & fzf-checkout {{{
-let g:fzf_layout = { 'window': { 'width': 0.8, 'height': 0.8 } }
-let $FZF_DEFAULT_OPTS='--reverse'
-let g:fzf_branch_actions = {
-    \ 'rebase': {
-    \   'confirm': v:false,
-    \ },
-    \}
-" }}}
 
 " airline {{{
 if !exists('g:airline_symbols')
