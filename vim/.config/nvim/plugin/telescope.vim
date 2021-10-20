@@ -1,6 +1,6 @@
 lua require('me.telescope')
 
-nnoremap <C-p> :Telescope git_files<CR>
+nnoremap <C-p> :lua require('me.telescope').project_files()<CR>
 nnoremap <leader>pf :Telescope find_files<CR>
 nnoremap <leader>ps :lua require('telescope.builtin').grep_string({ search = vim.fn.input('Grep for > ') })<CR>
 nnoremap <leader>pw :lua require('telescope.builtin').grep_string({ search = vim.fn.expand('<cword>') })<CR>
