@@ -208,7 +208,7 @@ let g:coc_global_extensions = ['coc-rust-analyzer', 'coc-json', 'coc-yaml', 'coc
 let g:coc_global_extensions += ['coc-toml', 'coc-highlight']
 
 autocmd CursorHold * call CocActionAsync('highlight')
-"
+" }}}
 
 " airline {{{
 if !exists('g:airline_symbols')
@@ -219,13 +219,6 @@ let g:airline_symbols.branch = ''
 let g:airline_symbols.maxlinenr = ''
 " }}}
 
-" tagbar {{{
-let g:tagbar_autofocus = 1
-let g:tagbar_autoshowtag = 1
-
-nmap <F8> :TagbarToggle<CR>
-" }}}
-
 " indentLine {{{
 let g:indentLine_leadingSpaceEnabled = 0
 let g:indentLine_leadingSpaceChar = '·'
@@ -234,7 +227,6 @@ let g:indentLine_leadingSpaceChar = '·'
 
 " numbertoggle {{{
 :nnoremap <silent> <C-n> :set relativenumber!<CR>
-" }}}
 " }}}
 
 " tagbar {{{
