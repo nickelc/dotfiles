@@ -53,6 +53,7 @@ Plug 'rust-lang/rust.vim'
 Plug 'cespare/vim-toml'
 
 Plug 'tpope/vim-fugitive'
+Plug 'tpope/vim-rhubarb'
 Plug 'junegunn/gv.vim'
 Plug 'neoclide/coc.nvim', {'branch': 'release'}
 
