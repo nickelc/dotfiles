@@ -22,6 +22,8 @@
 	prompt = false
 [gui]
 	spellingdictionary = none
+[color "branch"]
+	upstream = yellow
 [color "diff-highlight"]
 	oldNormal = red bold
 	oldHighlight = red bold 52
