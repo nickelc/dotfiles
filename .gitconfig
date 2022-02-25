@@ -2,7 +2,7 @@
 	name = Constantin Nickel
 	email = constantin.nickel@gmail.com
 [core]
-	pager = delta --hunk-color=red
+	pager = delta --hunk-header-style=red
 	whitespace = tab-in-indent,blank-at-eol
 [color]
 	ui = auto
