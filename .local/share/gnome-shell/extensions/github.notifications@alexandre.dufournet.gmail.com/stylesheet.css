@@ -1,9 +1,3 @@
-
-.github-background-symbolic {
-	/*-gtk-icon-source: url("github.svg");*/
-	/*-gtk-icon-source: -gtk-recolor(url("github.svg"));*/
-	background-image: url("github.svg");
-	height: 16px;
-	width: 16px;
+.notifications-length {
+	padding: 0 inherit 0 0;
 }
-
