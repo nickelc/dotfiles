@@ -16,7 +16,12 @@ require('telescope').setup({
                 ['<C-Down>'] = actions.preview_scrolling_down,
             },
         },
-    }
+    },
+    pickers = {
+        find_files = {
+            find_command = { 'fd', '--type', 'f', '--strip-cwd-prefix' },
+        },
+    },
 })
 
 require('telescope').load_extension('fzf')
