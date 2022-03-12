@@ -37,36 +37,7 @@ set list listchars=tab:\ \ ,trail:·
 let mapleader=" "
 " }}}
 
-" Plugins {{{
-call plug#begin('~/.vim/plugged')
-Plug 'tpope/vim-vinegar'
-Plug 'preservim/nerdtree'
-Plug 'Xuyuanp/nerdtree-git-plugin'
-Plug 'preservim/tagbar'
-Plug 'vim-airline/vim-airline'
-Plug 'mbbill/undotree'
-
-Plug 'jeffkreeftmeijer/vim-numbertoggle'
-Plug 'Yggdroot/indentLine'
-Plug 'tomtom/tcomment_vim'
-
-Plug 'rust-lang/rust.vim'
-Plug 'cespare/vim-toml'
-
-Plug 'tpope/vim-fugitive'
-Plug 'tpope/vim-rhubarb'
-Plug 'junegunn/gv.vim'
-Plug 'neoclide/coc.nvim', {'branch': 'release'}
-
-" telescope requirements...
-Plug 'nvim-lua/plenary.nvim'
-Plug 'nvim-telescope/telescope.nvim'
-Plug 'nvim-telescope/telescope-fzf-native.nvim', { 'do': 'make' }
-
-Plug 'gruvbox-community/gruvbox'
-Plug 'joshdick/onedark.vim'
-call plug#end()
-" }}}
+lua require('plugins')
 
 " Theme & Colors {{{
 let g:gruvbox_contrast_dark = 'hard'
