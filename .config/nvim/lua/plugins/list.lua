@@ -26,6 +26,7 @@ return function(use)
     use {
         'nvim-telescope/telescope.nvim',
         requires = 'nvim-lua/plenary.nvim',
+        config = 'require("me.telescope")',
     }
     use { 'nvim-telescope/telescope-fzf-native.nvim', run = 'make' }
 
