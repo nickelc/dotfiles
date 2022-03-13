@@ -47,4 +47,12 @@ M.project_files = function()
     end
 end
 
-return M
+return setmetatable({}, {
+    __index = function(_, k)
+        if M[k] then
+            return M[k]
+        else
+            return require('telescope.builtin')[k]
+        end
+    end,
+})
