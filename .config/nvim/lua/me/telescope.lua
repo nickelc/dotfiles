@@ -28,6 +28,18 @@ require('telescope').load_extension('fzf')
 
 local M = {}
 
+M.grep_cword = function()
+    require('telescope.builtin').grep_string({
+        search = vim.fn.expand('<cword>'),
+    })
+end
+
+M.grep_input = function()
+    require('telescope.builtin').grep_string({
+        search = vim.fn.input('Grep for > '),
+    })
+end
+
 M.project_files = function()
     local ok = pcall(require('telescope.builtin').git_files)
     if not ok then
