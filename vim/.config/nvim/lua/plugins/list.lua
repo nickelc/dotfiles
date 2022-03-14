@@ -19,6 +19,11 @@ return function(use)
     use 'tpope/vim-fugitive'
     use 'tpope/vim-rhubarb'
     use 'junegunn/gv.vim'
+    use {
+        'lewis6991/gitsigns.nvim',
+        requires = 'nvim-lua/plenary.nvim',
+        config = 'require("me.gitsigns")',
+    }
 
     use { 'neoclide/coc.nvim', branch = 'release' }
 
