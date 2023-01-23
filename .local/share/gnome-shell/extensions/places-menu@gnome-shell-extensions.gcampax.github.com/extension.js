@@ -1,7 +1,7 @@
 /* -*- mode: js2; js2-basic-offset: 4; indent-tabs-mode: nil -*- */
 /* exported init enable disable */
 
-const { Clutter, GObject, St } = imports.gi;
+const {Clutter, GObject, St} = imports.gi;
 
 const ExtensionUtils = imports.misc.extensionUtils;
 const Main = imports.ui.main;
@@ -16,10 +16,13 @@ const N_ = x => x;
 
 const PLACE_ICON_SIZE = 16;
 
-var PlaceMenuItem = GObject.registerClass(
 class PlaceMenuItem extends PopupMenu.PopupBaseMenuItem {
-    _init(info) {
-        super._init({
+    static {
+        GObject.registerClass(this);
+    }
+
+    constructor(info) {
+        super({
             style_class: 'place-menu-item',
         });
         this._info = info;
@@ -73,7 +76,7 @@ class PlaceMenuItem extends PopupMenu.PopupBaseMenuItem {
         this._icon.gicon = info.icon;
         this._label.text = info.name;
     }
-});
+}
 
 const SECTIONS = [
     'special',
@@ -82,10 +85,13 @@ const SECTIONS = [
     'network',
 ];
 
-let PlacesMenu = GObject.registerClass(
 class PlacesMenu extends PanelMenu.Button {
-    _init() {
-        super._init(0.0, _('Places'));
+    static {
+        GObject.registerClass(this);
+    }
+
+    constructor() {
+        super(0.0, _('Places'));
 
         let label = new St.Label({
             text: _('Places'),
@@ -130,7 +136,7 @@ class PlacesMenu extends PanelMenu.Button {
 
         this._sections[id].actor.visible = places.length > 0;
     }
-});
+}
 
 /** */
 function init() {

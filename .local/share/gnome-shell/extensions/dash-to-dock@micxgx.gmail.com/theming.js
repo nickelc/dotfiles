@@ -33,6 +33,17 @@ const TransparencyMode = {
     DYNAMIC:  3
 };
 
+const Labels = Object.freeze({
+    TRANSPARENCY: Symbol('transparency'),
+});
+
+var PositionStyleClass = Object.freeze([
+    'top',
+    'right',
+    'bottom',
+    'left',
+]);
+
 /**
  * Manage theme customization and custom theme support
  */
@@ -87,7 +98,7 @@ var ThemeManager = class DashToDock_ThemeManager {
     }
 
     _updateDashOpacity() {
-        let newAlpha = Docking.DockManager.settings.get_double('background-opacity');
+        let newAlpha = Docking.DockManager.settings.backgroundOpacity;
 
         let [backgroundColor, borderColor] = this._getDefaultColors();
 
@@ -120,15 +131,15 @@ var ThemeManager = class DashToDock_ThemeManager {
     _getDefaultColors() {
         // Prevent shell crash if the actor is not on the stage.
         // It happens enabling/disabling repeatedly the extension
-        if (!this._dash._container.get_stage())
+        if (!this._dash._background.get_stage())
             return [null, null];
 
         // Remove custom style
-        let oldStyle = this._dash._container.get_style();
-        this._dash._container.set_style(null);
+        const oldStyle = this._dash._background.get_style();
+        this._dash._background.set_style(null);
 
-        let themeNode = this._dash._container.get_theme_node();
-        this._dash._container.set_style(oldStyle);
+        const themeNode = this._dash._background.get_theme_node();
+        this._dash._background.set_style(oldStyle);
 
         let backgroundColor = themeNode.get_background_color();
 
@@ -156,14 +167,14 @@ var ThemeManager = class DashToDock_ThemeManager {
 
         let settings = Docking.DockManager.settings;
 
-        if (settings.get_boolean('custom-background-color')) {
+        if (settings.customBackgroundColor) {
             // When applying a custom color, we need to check the alpha value,
             // if not the opacity will always be overridden by the color below.
             // Note that if using 'dynamic' transparency modes,
             // the opacity will be set by the opaque/transparent styles anyway.
             let newAlpha = Math.round(backgroundColor.alpha/2.55)/100;
 
-            backgroundColor = settings.get_string('background-color');
+            backgroundColor = settings.backgroundColor;
             // backgroundColor is a string like rgb(0,0,0)
             const [ret, color] = Clutter.Color.from_string(backgroundColor);
             if (!ret) {
@@ -171,10 +182,10 @@ var ThemeManager = class DashToDock_ThemeManager {
                 return;
             }
 
-            if (settings.get_enum('transparency-mode') == TransparencyMode.FIXED) {
-                newAlpha = settings.get_double('background-opacity');
+            if (settings.transparencyMode === TransparencyMode.FIXED) {
+                newAlpha = settings.backgroundOpacity;
                 this._customizedBackground =
-                    `rgba(${color.red}, ${color.blue}, ${color.green}, ${newAlpha})`;
+                    `rgba(${color.red}, ${color.green}, ${color.blue}, ${newAlpha})`;
             } else {
                 this._customizedBackground = backgroundColor;
             }
@@ -192,24 +203,24 @@ var ThemeManager = class DashToDock_ThemeManager {
     _updateCustomStyleClasses() {
         let settings = Docking.DockManager.settings;
 
-        if (settings.get_boolean('apply-custom-theme'))
+        if (settings.applyCustomTheme)
             this._actor.add_style_class_name('dashtodock');
         else
             this._actor.remove_style_class_name('dashtodock');
 
-        if (settings.get_boolean('custom-theme-shrink'))
+        if (settings.customThemeShrink)
             this._actor.add_style_class_name('shrink');
         else
             this._actor.remove_style_class_name('shrink');
 
-        if (settings.get_enum('running-indicator-style') !== 0)
+        if (settings.runningIndicatorStyle !== 0)
             this._actor.add_style_class_name('running-dots');
         else
             this._actor.remove_style_class_name('running-dots');
 
         // If not the built-in theme option is not selected
-        if (!settings.get_boolean('apply-custom-theme')) {
-            if (settings.get_boolean('force-straight-corner'))
+        if (!settings.applyCustomTheme) {
+            if (settings.forceStraightCorner)
                 this._actor.add_style_class_name('straight-corner');
             else
                 this._actor.remove_style_class_name('straight-corner');
@@ -244,7 +255,7 @@ var ThemeManager = class DashToDock_ThemeManager {
         this._transparency.disable();
 
         // If built-in theme is enabled do nothing else
-        if (settings.get_boolean('apply-custom-theme'))
+        if (settings.applyCustomTheme)
             return;
 
         let newStyle = '';
@@ -276,12 +287,12 @@ var ThemeManager = class DashToDock_ThemeManager {
         }
 
         // Customize background
-        let fixedTransparency = settings.get_enum('transparency-mode') == TransparencyMode.FIXED;
-        let defaultTransparency = settings.get_enum('transparency-mode') == TransparencyMode.DEFAULT;
+        const fixedTransparency = settings.transparencyMode === TransparencyMode.FIXED;
+        const defaultTransparency = settings.transparencyMode === TransparencyMode.DEFAULT;
         if (!defaultTransparency && !fixedTransparency) {
             this._transparency.enable();
         }
-        else if (!defaultTransparency || settings.get_boolean('custom-background-color')) {
+        else if (!defaultTransparency || settings.customBackgroundColor) {
             newStyle = newStyle + 'background-color:'+ this._customizedBackground + '; ' +
                        'border-color:'+ this._customizedBorder + '; ' +
                        'transition-delay: 0s; transition-duration: 0.250s;';
@@ -352,7 +363,7 @@ var Transparency = class DashToDock_Transparency {
             this._base_actor_style = "";
         }
 
-        this._signalsHandler.addWithLabel('transparency', [
+        this._signalsHandler.addWithLabel(Labels.TRANSPARENCY, [
             global.window_group,
             'actor-added',
             this._onWindowActorAdded.bind(this)
@@ -396,7 +407,7 @@ var Transparency = class DashToDock_Transparency {
     disable() {
         // ensure I never double-register/inject
         // although it should never happen
-        this._signalsHandler.removeWithLabel('transparency');
+        this._signalsHandler.removeWithLabel(Labels.TRANSPARENCY);
 
         for (let key of this._trackedWindows.keys())
             this._trackedWindows.get(key).forEach(id => {
@@ -456,7 +467,8 @@ var Transparency = class DashToDock_Transparency {
         let windows = activeWorkspace.list_windows().filter(function(metaWindow) {
             return metaWindow.get_monitor() === dash._monitorIndex &&
                    metaWindow.showing_on_its_workspace() &&
-                   metaWindow.get_window_type() != Meta.WindowType.DESKTOP;
+                   metaWindow.get_window_type() !== Meta.WindowType.DESKTOP &&
+                   (!Meta.is_wayland_compositor() || !metaWindow.skip_taskbar);
         });
 
         /* Check if at least one window is near enough to the panel.
@@ -550,10 +562,10 @@ var Transparency = class DashToDock_Transparency {
 
         let settings = Docking.DockManager.settings;
 
-        if (settings.get_boolean('customize-alphas')) {
-            this._opaqueAlpha = settings.get_double('max-alpha');
+        if (settings.customizeAlphas) {
+            this._opaqueAlpha = settings.maxAlpha;
             this._opaqueAlphaBorder = this._opaqueAlpha / 2;
-            this._transparentAlpha = settings.get_double('min-alpha');
+            this._transparentAlpha = settings.minAlpha;
             this._transparentAlphaBorder = this._transparentAlpha / 2;
         }
     }

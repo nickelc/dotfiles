@@ -20,16 +20,19 @@ try {
     imports.misc.extensionUtils;
 } catch (e) {
     const resource = Gio.Resource.load(
-        '/usr/share/gnome-shell/org.gnome.Extensions.src.gresource');
+        (GLib.getenv('JHBUILD_PREFIX') || '/usr') +
+        '/share/gnome-shell/org.gnome.Extensions.src.gresource');
     resource._register();
     imports.searchPath.push('resource:///org/gnome/Extensions/js');
 }
 
+const Config = imports.misc.config;
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
 
 const SCALE_UPDATE_TIMEOUT = 500;
 const DEFAULT_ICONS_SIZES = [128, 96, 64, 48, 32, 24, 16];
+const [SHELL_VERSION] = Config?.PACKAGE_VERSION?.split('.') ?? [undefined];
 
 const TransparencyMode = {
     DEFAULT: 0,
@@ -189,6 +192,7 @@ var Settings = GObject.registerClass({
         else
             this._settings = new Gio.Settings({schema_id: 'org.gnome.shell.extensions.dash-to-dock'});
 
+        this._appSwitcherSettings = new Gio.Settings({ schema_id: 'org.gnome.shell.app-switcher' });
         this._rtl = (Gtk.Widget.get_default_direction() == Gtk.TextDirection.RTL);
 
         this._builder = new Gtk.Builder();
@@ -200,14 +204,23 @@ var Settings = GObject.registerClass({
             this._builder.add_from_file('./Settings.ui');
         }
 
-        this.widget = new Gtk.ScrolledWindow({ hscrollbar_policy: Gtk.PolicyType.NEVER });
         this._notebook = this._builder.get_object('settings_notebook');
-        this.widget.set_child(this._notebook);
+
+        if (SHELL_VERSION >= 42) {
+            this.widget = this._notebook;
+        } else {
+            this.widget = new Gtk.ScrolledWindow({
+                hscrollbar_policy: Gtk.PolicyType.NEVER,
+                vscrollbar_policy: Gtk.PolicyType.AUTOMATIC,
+            });
+            this.widget.set_child(this._notebook);
+        }
 
         // Set a reasonable initial window height
         this.widget.connect('realize', () => {
-            const window = this.widget.get_root();
-            window.set_size_request(-1, 750);
+            const rootWindow = this.widget.get_root();
+            rootWindow.set_size_request(-1, 850);
+            rootWindow.connect('close-request', () => this._onWindowsClosed());
         });
 
         // Timeout to delay the update of the settings
@@ -215,8 +228,31 @@ var Settings = GObject.registerClass({
         this._icon_size_timeout = 0;
         this._opacity_timeout = 0;
 
+        if (Config.PACKAGE_VERSION.split('.')[0] < 42) {
+            // Remove this when we won't support earlier versions
+            this._builder.get_object('shrink_dash_label1').label =
+                __('Show favorite applications');
+        }
+
         this._monitorsConfig = new MonitorsConfig();
         this._bindSettings();
+    }
+
+    _onWindowsClosed() {
+        if (this._dock_size_timeout) {
+            GLib.source_remove(this._dock_size_timeout);
+            delete this._dock_size_timeout;
+        }
+
+        if (this._icon_size_timeout) {
+            GLib.source_remove(this._icon_size_timeout);
+            delete this._icon_size_timeout;
+        }
+
+        if (this._opacity_timeout) {
+            GLib.source_remove(this._opacity_timeout);
+            delete this._opacity_timeout;
+        }
     }
 
     vfunc_create_closure(builder, handlerName, flags, connectObject) {
@@ -230,11 +266,15 @@ var Settings = GObject.registerClass({
     }
 
     dock_display_combo_changed_cb(combo) {
-        if (!this._monitors?.length)
+        if (!this._monitors?.length || this._updatingSettings)
             return;
 
-        const preferredMonitor = this._monitors[combo.get_active()].index;
-        this._settings.set_int('preferred-monitor', preferredMonitor);
+        const preferredMonitor = this._monitors[combo.get_active()].connector;
+
+        this._updatingSettings = true;
+        this._settings.set_string('preferred-monitor-by-connector', preferredMonitor);
+        this._settings.set_int('preferred-monitor', -2);
+        this._updatingSettings = false;
     }
 
     position_top_button_toggled_cb(button) {
@@ -265,13 +305,11 @@ var Settings = GObject.registerClass({
         // Avoid settings the size continuously
         if (this._dock_size_timeout > 0)
             GLib.source_remove(this._dock_size_timeout);
-        const id = this._dock_size_timeout = GLib.timeout_add(
+        this._dock_size_timeout = GLib.timeout_add(
             GLib.PRIORITY_DEFAULT, SCALE_UPDATE_TIMEOUT, () => {
-                if (id === this._dock_size_timeout) {
-                    this._settings.set_double('height-fraction', scale.get_value());
-                    this._dock_size_timeout = 0;
-                    return GLib.SOURCE_REMOVE;
-                }
+                this._settings.set_double('height-fraction', scale.get_value());
+                this._dock_size_timeout = 0;
+                return GLib.SOURCE_REMOVE;
             });
     }
 
@@ -340,13 +378,20 @@ var Settings = GObject.registerClass({
             this._settings.set_enum('intellihide-mode', 2);
     }
 
+    always_on_top_radio_button_toggled_cb(button) {
+        if (button.get_active())
+            this._settings.set_enum('intellihide-mode', 3);
+    }
+
     _updateMonitorsSettings() {
         // Monitor options
         const preferredMonitor = this._settings.get_int('preferred-monitor');
+        const preferredMonitorByConnector = this._settings.get_string('preferred-monitor-by-connector');
         const dockMonitorCombo = this._builder.get_object('dock_monitor_combo');
 
         this._monitors = [];
         dockMonitorCombo.remove_all();
+        let primaryIndex = -1;
 
         // Add connected monitors
         for (const monitor of this._monitorsConfig.monitors) {
@@ -358,6 +403,7 @@ var Settings = GObject.registerClass({
                     /* Translators: This will be followed by Display Name - Connector. */
                     __('Primary monitor: ') + monitor.displayName + ' - ' +
                         monitor.connector);
+                primaryIndex = this._monitors.length;
             } else {
                 dockMonitorCombo.append_text(
                     /* Translators: Followed by monitor index, Display Name - Connector. */
@@ -367,9 +413,13 @@ var Settings = GObject.registerClass({
 
             this._monitors.push(monitor);
 
-            if (monitor.index === preferredMonitor)
+            if (monitor.index === preferredMonitor ||
+                (preferredMonitor == -2 && preferredMonitorByConnector == monitor.connector))
                 dockMonitorCombo.set_active(this._monitors.length - 1);
         }
+
+        if (dockMonitorCombo.get_active() < 0 && primaryIndex >= 0)
+            dockMonitorCombo.set_active(primaryIndex);
     }
 
     _bindSettings() {
@@ -377,6 +427,8 @@ var Settings = GObject.registerClass({
 
         this._updateMonitorsSettings();
         this._monitorsConfig.connect('updated', () => this._updateMonitorsSettings());
+        this._settings.connect('changed::preferred-monitor', () => this._updateMonitorsSettings());
+        this._settings.connect('changed::preferred-monitor-by-connector', () => this._updateMonitorsSettings());
 
         // Position option
         let position = this._settings.get_enum('dock-position');
@@ -417,6 +469,10 @@ var Settings = GObject.registerClass({
             Gio.SettingsBindFlags.DEFAULT);
         this._settings.bind('autohide-in-fullscreen',
             this._builder.get_object('autohide_enable_in_fullscreen_checkbutton'),
+            'active',
+            Gio.SettingsBindFlags.DEFAULT);
+        this._settings.bind('show-dock-urgent-notify',
+            this._builder.get_object('show_dock_urgent_notify_checkbutton'),
             'active',
             Gio.SettingsBindFlags.DEFAULT);
         this._settings.bind('require-pressure-to-show',
@@ -473,7 +529,8 @@ var Settings = GObject.registerClass({
             let intellihideModeRadioButtons = [
                 this._builder.get_object('all_windows_radio_button'),
                 this._builder.get_object('focus_application_windows_radio_button'),
-                this._builder.get_object('maximized_windows_radio_button')
+                this._builder.get_object('maximized_windows_radio_button'),
+                this._builder.get_object('always_on_top_radio_button'),
             ];
 
             intellihideModeRadioButtons[this._settings.get_enum('intellihide-mode')].set_active(true);
@@ -485,6 +542,11 @@ var Settings = GObject.registerClass({
 
             this._settings.bind('autohide',
                 this._builder.get_object('autohide_enable_in_fullscreen_checkbutton'),
+                'sensitive',
+                Gio.SettingsBindFlags.GET);
+
+            this._settings.bind('autohide',
+                this._builder.get_object('show_dock_urgent_notify_checkbutton'),
                 'sensitive',
                 Gio.SettingsBindFlags.GET);
 
@@ -508,7 +570,7 @@ var Settings = GObject.registerClass({
             dialog.connect('response', (dialog, id) => {
                 if (id == 1) {
                     // restore default settings for the relevant keys
-                    let keys = ['intellihide', 'autohide', 'intellihide-mode', 'autohide-in-fullscreen', 'require-pressure-to-show',
+                    let keys = ['intellihide', 'autohide', 'intellihide-mode', 'autohide-in-fullscreen', 'show-dock-urgent-notify', 'require-pressure-to-show',
                         'animation-time', 'show-delay', 'hide-delay', 'pressure-threshold'];
                     keys.forEach(function (val) {
                         this._settings.set_value(val, this._settings.get_default_value(val));
@@ -572,8 +634,28 @@ var Settings = GObject.registerClass({
             this._builder.get_object('show_running_switch'),
             'active',
             Gio.SettingsBindFlags.DEFAULT);
+        const applicationButtonIsolationButton =
+            this._builder.get_object('application_button_isolation_button');
         this._settings.bind('isolate-workspaces',
-            this._builder.get_object('application_button_isolation_button'),
+            applicationButtonIsolationButton,
+            'active',
+            Gio.SettingsBindFlags.DEFAULT);
+        applicationButtonIsolationButton.connect(
+            'notify::sensitive', check => {
+                if (check.sensitive) {
+                    check.label = check.label.split('\n')[0];
+                } else {
+                    check.label += '\n' +
+                        __('Managed by GNOME Multitasking\'s Application Switching setting');
+                }
+            });
+        this._appSwitcherSettings.bind('current-workspace-only',
+            applicationButtonIsolationButton,
+            'sensitive',
+            Gio.SettingsBindFlags.INVERT_BOOLEAN |
+            Gio.SettingsBindFlags.SYNC_CREATE);
+        this._settings.bind('workspace-agnostic-urgent-windows',
+            this._builder.get_object('application_button_urgent_button'),
             'active',
             Gio.SettingsBindFlags.DEFAULT);
         this._settings.bind('isolate-monitors',
@@ -598,6 +680,14 @@ var Settings = GObject.registerClass({
             Gio.SettingsBindFlags.DEFAULT);
         this._settings.bind('show-mounts',
             this._builder.get_object('show_mounts_switch'),
+            'active',
+            Gio.SettingsBindFlags.DEFAULT);
+        this._settings.bind('show-mounts-only-mounted',
+            this._builder.get_object('show_only_mounted_devices_check'),
+            'active',
+            Gio.SettingsBindFlags.DEFAULT);
+        this._settings.bind('show-mounts-network',
+            this._builder.get_object('show_network_volumes_check'),
             'active',
             Gio.SettingsBindFlags.DEFAULT);
         this._settings.bind('isolate-locations',
@@ -991,10 +1081,23 @@ var Settings = GObject.registerClass({
             this._builder.get_object('unity_backlit_items_switch'),
             'active', Gio.SettingsBindFlags.DEFAULT
         );
+        this._settings.bind('apply-glossy-effect',
+            this._builder.get_object('apply_gloss_effect_checkbutton'),
+            'active', Gio.SettingsBindFlags.DEFAULT
+        );
+        this._settings.bind('unity-backlit-items',
+            this._builder.get_object('apply_gloss_effect_checkbutton'),
+            'sensitive',
+            Gio.SettingsBindFlags.DEFAULT
+        );
 
         this._settings.bind('force-straight-corner',
             this._builder.get_object('force_straight_corner_switch'),
             'active', Gio.SettingsBindFlags.DEFAULT);
+
+        this._settings.bind('disable-overview-on-startup',
+            this._builder.get_object('show_overview_on_startup_switch'),
+            'active', Gio.SettingsBindFlags.INVERT_BOOLEAN);
 
         // About Panel
 

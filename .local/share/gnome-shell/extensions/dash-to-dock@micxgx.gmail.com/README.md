@@ -16,10 +16,10 @@ The extension can be installed directly from source, either for the convenience 
 
 To compile the stylesheet you'll need an implementation of SASS. Dash to Dock supports `dart-sass` (`sass`), `sassc`, and `ruby-sass`. Every distro should have at least one of these implementations, we recommend using `dart-sass` (`sass`) or `sassc` over `ruby-sass` as `ruby-sass` is deprecated.
 
-By default, Dash to Dock will attempt to build with `dart-sass`. To change this behavior set the `SASS` environment variable to either `sassc` or `ruby`.
+By default, Dash to Dock will attempt to build with `sassc`. To change this behavior set the `SASS` environment variable to either `dart` or `ruby`.
 
 ```bash
-export SASS=sassc
+export SASS=dart
 # or...
 export SASS=ruby
 ```
@@ -32,8 +32,7 @@ Next use `make` to install the extension into your home directory. A Shell reloa
 
 ```bash
 git clone https://github.com/micheleg/dash-to-dock.git
-make
-make install
+make -C dash-to-dock install
 ```
 
 ## Bug Reporting

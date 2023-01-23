@@ -2,9 +2,12 @@
 const Gi = imports._gi;
 
 const Clutter = imports.gi.Clutter;
+const GLib = imports.gi.GLib;
+const Gio = imports.gi.Gio;
 const GObject = imports.gi.GObject;
 const Gtk = imports.gi.Gtk;
 const Meta = imports.gi.Meta;
+const Shell = imports.gi.Shell;
 const St = imports.gi.St;
 
 const Me = imports.misc.extensionUtils.getCurrentExtension();
@@ -15,14 +18,20 @@ var SignalsHandlerFlags = {
     CONNECT_AFTER: 1
 };
 
+const GENERIC_KEY = Symbol('generic');
+
 /**
  * Simplify global signals and function injections handling
  * abstract class
  */
 const BasicHandler = class DashToDock_BasicHandler {
 
+    static get genericKey() {
+        return GENERIC_KEY;
+    }
+
     constructor(parentObject) {
-        this._storage = new Object();
+        this._storage = new Object(null);
 
         if (parentObject) {
             if (!(parentObject.connect instanceof Function))
@@ -39,18 +48,35 @@ const BasicHandler = class DashToDock_BasicHandler {
     add(...args) {
         // Convert arguments object to array, concatenate with generic
         // Call addWithLabel with ags as if they were passed arguments
-        this.addWithLabel('generic', ...args);
+        this.addWithLabel(GENERIC_KEY, ...args);
+    }
+
+    clear() {
+        Object.getOwnPropertySymbols(this._storage).forEach(label =>
+            this.removeWithLabel(label));
     }
 
     destroy() {
         this._parentObject?.disconnect(this._destroyId);
         this._parentObject = null;
 
-        for( let label in this._storage )
-            this.removeWithLabel(label);
+        this.clear();
+    }
+
+    block() {
+        Object.getOwnPropertySymbols(this._storage).forEach(label =>
+            this.blockWithLabel(label));
+    }
+
+    unblock() {
+        Object.getOwnPropertySymbols(this._storage).forEach(label =>
+            this.unblockWithLabel(label));
     }
 
     addWithLabel(label, ...args) {
+        if (typeof label !== 'symbol')
+            throw new Error(`Invalid label ${label}, must be a symbol`);
+
         let argsArray = [...args];
         if (argsArray.every(arg => !Array.isArray(arg)))
             argsArray = [argsArray];
@@ -72,12 +98,16 @@ const BasicHandler = class DashToDock_BasicHandler {
     }
 
     removeWithLabel(label) {
-        if (this._storage[label]) {
-            for (let i = 0; i < this._storage[label].length; i++)
-                this._remove(this._storage[label][i]);
+        this._storage[label]?.reverse().forEach(item => this._remove(item));
+        delete this._storage[label];
+    }
 
-            delete this._storage[label];
-        }
+    blockWithLabel(label) {
+        (this._storage[label] || []).forEach(item => this._block(item));
+    }
+
+    unblockWithLabel(label) {
+        (this._storage[label] || []).forEach(item => this._unblock(item));
     }
 
     // Virtual methods to be implemented by subclass
@@ -94,6 +124,20 @@ const BasicHandler = class DashToDock_BasicHandler {
      */
     _remove(_item) {
         throw new GObject.NotImplementedError(`_remove in ${this.constructor.name}`);
+    }
+
+    /**
+     * Block single element
+     */
+    _block(_item) {
+        throw new GObject.NotImplementedError(`_block in ${this.constructor.name}`);
+    }
+
+    /**
+     * Unblock single element
+     */
+    _unblock(_item) {
+        throw new GObject.NotImplementedError(`_unblock in ${this.constructor.name}`);
     }
 };
 
@@ -117,12 +161,32 @@ var GlobalSignalsHandler = class DashToDock_GlobalSignalHandler extends BasicHan
 
         let id = connector.call(object, event, callback);
 
+        if (event === 'destroy' && object === this._parentObject) {
+            this._parentObject.disconnect(this._destroyId);
+            this._destroyId =
+                this._parentObject.connect('destroy', () => this.destroy());
+        }
+
         return [object, id];
     }
 
     _remove(item) {
         const [object, id] = item;
         object.disconnect(id);
+    }
+
+    _block(item) {
+        const [object, id] = item;
+
+        if (object instanceof GObject.Object)
+            GObject.Object.prototype.block_signal_handler.call(object, id);
+    }
+
+    _unblock(item) {
+        const [object, id] = item;
+
+        if (object instanceof GObject.Object)
+            GObject.Object.prototype.unblock_signal_handler.call(object, id);
     }
 };
 
@@ -242,7 +306,7 @@ var InjectionsHandler = class DashToDock_InjectionsHandler extends BasicHandler 
         let original = object[name];
 
         if (!(original instanceof Function))
-            throw new Error(`Virtual function ${name} is not available for ${prototype}`);
+            throw new Error(`Virtual function ${name}() is not available for ${object}`);
 
         object[name] = function(...args) { return injectedFunction.call(this, original, ...args) };
         return [object, name, original];
@@ -264,7 +328,7 @@ var VFuncInjectionsHandler = class DashToDock_VFuncInjectionsHandler extends Bas
         const original = prototype[`vfunc_${name}`];
         if (!(original instanceof Function))
             throw new Error(`Virtual function ${name} is not available for ${prototype}`);
-        prototype[Gi.hook_up_vfunc_symbol](name, injectedFunction);
+        this._replaceVFunc(prototype, name, injectedFunction);
         return [prototype, name];
     }
 
@@ -275,16 +339,23 @@ var VFuncInjectionsHandler = class DashToDock_VFuncInjectionsHandler extends Bas
             // This may fail if trying to reset to a never-overridden vfunc
             // as gjs doesn't consider it a function, even if it's true that
             // originalVFunc instanceof Function.
-            prototype[Gi.hook_up_vfunc_symbol](name, originalVFunc);
+            this._replaceVFunc(prototype, name, originalVFunc);
         } catch {
             try {
-                prototype[Gi.hook_up_vfunc_symbol](name, function (...args) {
+                this._replaceVFunc(prototype, name, function (...args) {
                     return originalVFunc.call(this, ...args);
                 });
             } catch (e) {
                 logError(e, `Removing vfunc_${name}`);
             }
         }
+    }
+
+    _replaceVFunc(prototype, name, func) {
+        if (Gi.gobject_prototype_symbol && Gi.gobject_prototype_symbol in prototype)
+            prototype = prototype[Gi.gobject_prototype_symbol];
+
+        return prototype[Gi.hook_up_vfunc_symbol](name, func);
     }
 };
 
@@ -323,18 +394,18 @@ var PropertyInjectionsHandler = class DashToDock_PropertyInjectionsHandler exten
  * Return the actual position reverseing left and right in rtl
  */
 function getPosition() {
-    let position = Docking.DockManager.settings.get_enum('dock-position');
+    const position = Docking.DockManager.settings.dockPosition;
     if (Clutter.get_default_text_direction() == Clutter.TextDirection.RTL) {
         if (position == St.Side.LEFT)
-            position = St.Side.RIGHT;
+            return St.Side.RIGHT;
         else if (position == St.Side.RIGHT)
-            position = St.Side.LEFT;
+            return St.Side.LEFT;
     }
     return position;
 }
 
 function getPreviewScale() {
-    return Docking.DockManager.settings.get_double('preview-size-scale');
+    return Docking.DockManager.settings.previewSizeScale;
 }
 
 function drawRoundedLine(cr, x, y, width, height, isRoundLeft, isRoundRight, stroke, fill) {
@@ -414,3 +485,133 @@ var IconTheme = class DashToDockIconTheme {
         this._iconTheme = null;
     }
 }
+
+/**
+ * Construct a map of gtk application window object paths to MetaWindows.
+ */
+function getWindowsByObjectPath() {
+    const windowsByObjectPath = new Map();
+    const { workspaceManager } = global;
+    const workspaces = [...new Array(workspaceManager.nWorkspaces)].map(
+        (_c, i) => workspaceManager.get_workspace_by_index(i));
+
+    workspaces.forEach(ws => {
+        ws.list_windows().forEach(w => {
+            const path = w.get_gtk_window_object_path();
+            if (path != null)
+                windowsByObjectPath.set(path, w);
+        });
+    });
+
+    return windowsByObjectPath;
+}
+
+// Re-implements shell_app_compare so that can be used to resort running apps
+function shellAppCompare(appA, appB) {
+    if (appA.state !== appB.state) {
+        if (appA.state === Shell.AppState.RUNNING)
+            return -1;
+        return 1;
+    }
+
+    const windowsA = appA.get_windows();
+    const windowsB = appB.get_windows();
+
+    const isMinimized = windows => !windows.some(w => w.showing_on_its_workspace());
+    const minimizedB = isMinimized(windowsB);
+    if (isMinimized(windowsA) != minimizedB) {
+        if (minimizedB)
+            return -1;
+        return 1;
+    }
+
+    if (appA.state === Shell.AppState.RUNNING) {
+        if (windowsA.length && !windowsB.length)
+            return -1;
+        else if (!windowsA.length && windowsB.length)
+            return 1;
+
+        const lastUserTime = windows =>
+            Math.max(...windows.map(w => w.get_user_time()));
+        return lastUserTime(windowsB) - lastUserTime(windowsA);
+    }
+
+    return 0;
+}
+
+// Re-implements shell_app_compare_windows
+function shellWindowsCompare(winA, winB) {
+    const activeWorkspace = global.workspaceManager.get_active_workspace();
+    const wsA = winA.get_workspace() === activeWorkspace;
+    const wsB = winB.get_workspace() === activeWorkspace;
+
+    if (wsA && !wsB)
+        return -1;
+    else if (!wsA && wsB)
+        return 1;
+
+    const visA = winA.showing_on_its_workspace();
+    const visB = winB.showing_on_its_workspace();
+
+    if (visA && !visB)
+        return -1;
+    else if (!visA && visB)
+        return 1;
+
+    return winB.get_user_time() - winA.get_user_time();
+}
+
+var CancellableChild = GObject.registerClass({
+    Properties: {
+        'parent': GObject.ParamSpec.object(
+            'parent', 'parent', 'parent',
+            GObject.ParamFlags.READWRITE | GObject.ParamFlags.CONSTRUCT_ONLY,
+            Gio.Cancellable.$gtype),
+    },
+},
+class CancellableChild extends Gio.Cancellable {
+    _init(parent) {
+        if (parent && !(parent instanceof Gio.Cancellable))
+            throw TypeError('Not a valid cancellable');
+
+        super._init({ parent });
+
+        if (parent?.is_cancelled()) {
+            this.cancel();
+            return;
+        }
+
+        this._connectToParent();
+    }
+
+    _connectToParent() {
+        this._connectId = this.parent?.connect(() => {
+            this._realCancel();
+
+            if (this._disconnectIdle)
+                return;
+
+            this._disconnectIdle = GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
+                delete this._disconnectIdle;
+                this._disconnectFromParent();
+                return GLib.SOURCE_REMOVE;
+            });
+        });
+    }
+
+    _disconnectFromParent() {
+        if (this._connectId && !this._disconnectIdle) {
+            this.parent.disconnect(this._connectId);
+            delete this._connectId;
+        }
+    }
+
+    _realCancel() {
+        Gio.Cancellable.prototype.cancel.call(this);
+    }
+
+    cancel() {
+        this._disconnectFromParent();
+        this._realCancel();
+    }
+});

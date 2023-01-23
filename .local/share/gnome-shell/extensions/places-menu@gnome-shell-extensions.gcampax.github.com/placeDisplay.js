@@ -1,7 +1,8 @@
 // -*- mode: js; js-indent-level: 4; indent-tabs-mode: nil -*-
+/* exported PlacesManager */
 
-const { Gio, GLib, Shell } = imports.gi;
-const Signals = imports.signals;
+const {Gio, GLib, Shell} = imports.gi;
+const {EventEmitter} = imports.misc.signals;
 
 const ExtensionUtils = imports.misc.extensionUtils;
 const Main = imports.ui.main;
@@ -9,6 +10,9 @@ const ShellMountOperation = imports.ui.shellMountOperation;
 
 const _ = ExtensionUtils.gettext;
 const N_ = x => x;
+
+Gio._promisify(Gio.AppInfo, 'launch_default_for_uri_async');
+Gio._promisify(Gio.File.prototype, 'mount_enclosing_volume');
 
 const BACKGROUND_SCHEMA = 'org.gnome.desktop.background';
 
@@ -19,8 +23,10 @@ const Hostname1Iface = '<node> \
 </node>';
 const Hostname1 = Gio.DBusProxy.makeProxyWrapper(Hostname1Iface);
 
-class PlaceInfo {
+class PlaceInfo extends EventEmitter {
     constructor(...params) {
+        super();
+
         this._init(...params);
     }
 
@@ -28,7 +34,7 @@ class PlaceInfo {
         this.kind = kind;
         this.file = file;
         this.name = name || this._getFileName();
-        this.icon = icon ? new Gio.ThemedIcon({ name: icon }) : this.getIcon();
+        this.icon = icon ? new Gio.ThemedIcon({name: icon}) : this.getIcon();
     }
 
     destroy() {
@@ -40,7 +46,7 @@ class PlaceInfo {
 
     async _ensureMountAndLaunch(context, tryMount) {
         try {
-            await this._launchDefaultForUri(this.file.get_uri(), context, null);
+            await Gio.AppInfo.launch_default_for_uri_async(this.file.get_uri(), context, null);
         } catch (err) {
             if (!err.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.NOT_MOUNTED)) {
                 Main.notifyError(_('Failed to launch “%s”').format(this.name), err.message);
@@ -52,7 +58,7 @@ class PlaceInfo {
             };
             let op = new ShellMountOperation.ShellMountOperation(source);
             try {
-                await this._mountEnclosingVolume(0, op.mountOp, null);
+                await this.file.mount_enclosing_volume(0, op.mountOp, null);
 
                 if (tryMount)
                     this._ensureMountAndLaunch(context, false);
@@ -91,16 +97,16 @@ class PlaceInfo {
         // icon from the query info above
         switch (this.kind) {
         case 'network':
-            return new Gio.ThemedIcon({ name: 'folder-remote-symbolic' });
+            return new Gio.ThemedIcon({name: 'folder-remote-symbolic'});
         case 'devices':
-            return new Gio.ThemedIcon({ name: 'drive-harddisk-symbolic' });
+            return new Gio.ThemedIcon({name: 'drive-harddisk-symbolic'});
         case 'special':
         case 'bookmarks':
         default:
             if (!this.file.is_native())
-                return new Gio.ThemedIcon({ name: 'folder-remote-symbolic' });
+                return new Gio.ThemedIcon({name: 'folder-remote-symbolic'});
             else
-                return new Gio.ThemedIcon({ name: 'folder-symbolic' });
+                return new Gio.ThemedIcon({name: 'folder-symbolic'});
         }
     }
 
@@ -114,34 +120,7 @@ class PlaceInfo {
             throw e;
         }
     }
-
-    _launchDefaultForUri(uri, context, cancel) {
-        return new Promise((resolve, reject) => {
-            Gio.AppInfo.launch_default_for_uri_async(uri, context, cancel, (o, res) => {
-                try {
-                    Gio.AppInfo.launch_default_for_uri_finish(res);
-                    resolve();
-                } catch (e) {
-                    reject(e);
-                }
-            });
-        });
-    }
-
-    _mountEnclosingVolume(flags, mountOp, cancel) {
-        return new Promise((resolve, reject) => {
-            this.file.mount_enclosing_volume(flags, mountOp, cancel, (o, res) => {
-                try {
-                    this.file.mount_enclosing_volume_finish(res);
-                    resolve();
-                } catch (e) {
-                    reject(e);
-                }
-            });
-        });
-    }
 }
-Signals.addSignalMethods(PlaceInfo.prototype);
 
 class RootInfo extends PlaceInfo {
     _init() {
@@ -161,7 +140,7 @@ class RootInfo extends PlaceInfo {
     }
 
     getIcon() {
-        return new Gio.ThemedIcon({ name: 'drive-harddisk-symbolic' });
+        return new Gio.ThemedIcon({name: 'drive-harddisk-symbolic'});
     }
 
     _propertiesChanged(proxy) {
@@ -269,8 +248,10 @@ const DEFAULT_DIRECTORIES = [
     GLib.UserDirectory.DIRECTORY_VIDEOS,
 ];
 
-var PlacesManager = class {
+var PlacesManager = class extends EventEmitter {
     constructor() {
+        super();
+
         this._places = {
             special: [],
             devices: [],
@@ -278,7 +259,7 @@ var PlacesManager = class {
             network: [],
         };
 
-        this._settings = new Gio.Settings({ schema_id: BACKGROUND_SCHEMA });
+        this._settings = new Gio.Settings({schema_id: BACKGROUND_SCHEMA});
         this._showDesktopIconsChangedId = this._settings.connect(
             'changed::show-desktop-icons', this._updateSpecials.bind(this));
         this._updateSpecials();
@@ -566,4 +547,3 @@ var PlacesManager = class {
         return this._places[kind];
     }
 };
-Signals.addSignalMethods(PlacesManager.prototype);
