@@ -1,3 +1,7 @@
+[target.x86_64-unknown-linux-gnu]
+linker = "/usr/bin/clang"
+rustflags = ["-C", "link-arg=--ld-path=/usr/bin/mold"]
+
 [cargo-new]
 name = "Constantin Nickel"
 email = "constantin.nickel@gmail.com"
