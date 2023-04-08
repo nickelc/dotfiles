@@ -243,7 +243,7 @@ Keywords[zh_CN]=shell;prompt;command;commandline;命令;提示符;命令行;
 Keywords[zh_TW]=shell;prompt;command;commandline;cmd;外表殼;殼層;提示;指令;命令列;
 Keywords=shell;prompt;command;commandline;cmd;
 TryExec=gnome-terminal
-Exec=gnome-terminal
+Exec=gnome-terminal --profile=tmux --maximize
 Icon=org.gnome.Terminal
 Type=Application
 Categories=GNOME;GTK;System;TerminalEmulator;
