@@ -280,6 +280,11 @@
       <summary>Isolate volumes, devices and trash windows</summary>
       <description>Consider volume, devices and trash as different application windows and not part of the file manager</description>
     </key>
+    <key type="b" name="dance-urgent-applications">
+      <default>true</default>
+      <summary>Dance urgent applications</summary>
+      <description>Dance urgent application icons in the dash</description>
+    </key>
     <key type="b" name="show-show-apps-button">
       <default>true</default>
       <summary>Show applications button</summary>
@@ -610,6 +615,16 @@
       <default>true</default>
       <summary>Enable glossy effect</summary>
       <description>Toggle the glossy effect of the unity7 backlit feature.</description>
+    </key>
+    <key name="hide-tooltip" type="b">
+      <default>false</default>
+      <summary>Hide application tooltip</summary>
+      <description>Hide tooltip when hovering application in the dash.</description>
+    </key>
+    <key name="show-icons-emblems" type="b">
+      <default>true</default>
+      <summary>Show application icons emblems</summary>
+      <description>Show application icons emblems such as notification counters an progress bars.</description>
     </key>
   </schema>
 </schemalist>
