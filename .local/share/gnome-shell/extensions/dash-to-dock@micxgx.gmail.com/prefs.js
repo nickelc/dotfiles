@@ -1,41 +1,21 @@
 // -*- mode: js; js-indent-level: 4; indent-tabs-mode: nil -*-
 
-/* exported init, buildPrefsWidget */
+import GLib from 'gi://GLib';
+import GObject from 'gi://GObject';
+import Gdk from 'gi://Gdk';
+import Gio from 'gi://Gio';
+import Gtk from 'gi://Gtk';
 
-imports.gi.versions.Gtk = '4.0';
-imports.gi.versions.Gdk = '4.0';
+import {
+    ExtensionPreferences,
 
-const { Gio } = imports.gi;
-const { GLib } = imports.gi;
-const { GObject } = imports.gi;
-const { Gtk } = imports.gi;
-const { Gdk } = imports.gi;
-const Signals = imports.signals;
-
-// Use __ () and N__() for the extension gettext domain, and reuse
-// the shell domain with the default _() and N_()
-const Gettext = imports.gettext.domain('dashtodock');
-const __ = Gettext.gettext;
-const N__ = e => e;
-
-try {
-    // eslint-disable-next-line no-unused-expressions
-    imports.misc.extensionUtils;
-} catch (e) {
-    const resource = Gio.Resource.load(
-        `${GLib.getenv('JHBUILD_PREFIX') || '/usr'
-        }/share/gnome-shell/org.gnome.Extensions.src.gresource`);
-    resource._register();
-    imports.searchPath.push('resource:///org/gnome/Extensions/js');
-}
-
-const Config = imports.misc.config;
-const ExtensionUtils = imports.misc.extensionUtils;
-const Me = ExtensionUtils.getCurrentExtension();
+    // Use __ () and N__() for the extension gettext domain, and reuse
+    // the shell domain with the default _() and N_()
+    gettext as __,
+} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
 const SCALE_UPDATE_TIMEOUT = 500;
 const DEFAULT_ICONS_SIZES = [128, 96, 64, 48, 32, 24, 16];
-const [SHELL_VERSION] = Config?.PACKAGE_VERSION?.split('.') ?? [undefined];
 
 const TransparencyMode = Object.freeze({
     DEFAULT: 0,
@@ -54,7 +34,11 @@ const RunningIndicatorStyle = Object.freeze({
     METRO: 7,
 });
 
-class MonitorsConfig {
+const MonitorsConfig = GObject.registerClass({
+    Signals: {
+        'updated': {},
+    },
+}, class MonitorsConfig extends GObject.Object {
     static get XML_INTERFACE() {
         return '<node>\
             <interface name="org.gnome.Mutter.DisplayConfig">\
@@ -74,6 +58,8 @@ class MonitorsConfig {
     }
 
     constructor() {
+        super();
+
         this._monitorsConfigProxy = new MonitorsConfig.ProxyWrapper(
             Gio.DBus.session,
             'org.gnome.Mutter.DisplayConfig',
@@ -149,9 +135,9 @@ class MonitorsConfig {
         // for monitors, it can be removed when we don't care about breaking
         // old user configurations or external apps configuring this extension
         // such as ubuntu's gnome-control-center.
-        const { index: primaryMonitorIndex } = this._primaryMonitor;
+        const {index: primaryMonitorIndex} = this._primaryMonitor;
         for (const monitor of this._monitors) {
-            let { index } = monitor;
+            let {index} = monitor;
             // The The dock uses the Gdk index for monitors, where the primary monitor
             // always has index 0, so let's follow what dash-to-dock does in docking.js
             // (as part of _createDocks), but using inverted math
@@ -171,8 +157,7 @@ class MonitorsConfig {
     get monitors() {
         return this._monitors;
     }
-}
-Signals.addSignalMethods(MonitorsConfig.prototype);
+});
 
 /**
  * @param settings
@@ -189,45 +174,30 @@ function setShortcut(settings) {
     }
 }
 
-var Settings = GObject.registerClass({
+const DockSettings = GObject.registerClass({
     Implements: [Gtk.BuilderScope],
 }, class DashToDockSettings extends GObject.Object {
-    _init() {
+    _init(extensionPreferences) {
         super._init();
 
-        if (Me)
-            this._settings = ExtensionUtils.getSettings('org.gnome.shell.extensions.dash-to-dock');
-        else
-            this._settings = new Gio.Settings({ schema_id: 'org.gnome.shell.extensions.dash-to-dock' });
-
-        this._appSwitcherSettings = new Gio.Settings({ schema_id: 'org.gnome.shell.app-switcher' });
+        this._extensionPreferences = extensionPreferences;
+        this._settings = extensionPreferences.getSettings(
+            'org.gnome.shell.extensions.dash-to-dock');
+        this._appSwitcherSettings = new Gio.Settings({schema_id: 'org.gnome.shell.app-switcher'});
         this._rtl = Gtk.Widget.get_default_direction() === Gtk.TextDirection.RTL;
 
         this._builder = new Gtk.Builder();
         this._builder.set_scope(this);
-        if (Me) {
-            this._builder.set_translation_domain(Me.metadata['gettext-domain']);
-            this._builder.add_from_file(`${Me.path}/Settings.ui`);
-        } else {
-            this._builder.add_from_file('./Settings.ui');
-        }
+        this._builder.set_translation_domain(
+            extensionPreferences.metadata['gettext-domain']);
+        this._builder.add_from_file(`${extensionPreferences.path}/Settings.ui`);
 
-        this._notebook = this._builder.get_object('settings_notebook');
-
-        if (SHELL_VERSION >= 42) {
-            this.widget = this._notebook;
-        } else {
-            this.widget = new Gtk.ScrolledWindow({
-                hscrollbar_policy: Gtk.PolicyType.NEVER,
-                vscrollbar_policy: Gtk.PolicyType.AUTOMATIC,
-            });
-            this.widget.set_child(this._notebook);
-        }
+        this.widget = this._builder.get_object('settings_notebook');
 
         // Set a reasonable initial window height
         this.widget.connect('realize', () => {
             const rootWindow = this.widget.get_root();
-            rootWindow.set_size_request(-1, 850);
+            rootWindow.set_default_size(-1, 850);
             rootWindow.connect('close-request', () => this._onWindowsClosed());
         });
 
@@ -235,12 +205,6 @@ var Settings = GObject.registerClass({
         this._dock_size_timeout = 0;
         this._icon_size_timeout = 0;
         this._opacity_timeout = 0;
-
-        if (SHELL_VERSION < 42) {
-            // Remove this when we won't support earlier versions
-            this._builder.get_object('shrink_dash_label1').label =
-                __('Show favorite applications');
-        }
 
         this._monitorsConfig = new MonitorsConfig();
         this._bindSettings();
@@ -327,7 +291,6 @@ var Settings = GObject.registerClass({
             GLib.source_remove(this._icon_size_timeout);
         this._icon_size_timeout = GLib.timeout_add(
             GLib.PRIORITY_DEFAULT, SCALE_UPDATE_TIMEOUT, () => {
-                log(scale.get_value());
                 this._settings.set_int('dash-max-icon-size', scale.get_value());
                 this._icon_size_timeout = 0;
                 return GLib.SOURCE_REMOVE;
@@ -650,6 +613,14 @@ var Settings = GObject.registerClass({
             this._builder.get_object('dock_size_scale'),
             'sensitive',
             Gio.SettingsBindFlags.INVERT_BOOLEAN);
+        this._settings.bind('always-center-icons',
+            this._builder.get_object('dock_center_icons_check'),
+            'active',
+            Gio.SettingsBindFlags.DEFAULT);
+        this._settings.bind('extend-height',
+            this._builder.get_object('dock_center_icons_check'),
+            'sensitive',
+            Gio.SettingsBindFlags.DEFAULT);
 
         this._settings.bind('multi-monitor',
             this._builder.get_object('dock_monitor_combo'),
@@ -675,7 +646,7 @@ var Settings = GObject.registerClass({
                     [check.label] = check.label.split('\n');
                 } else {
                     check.label += `\n${
-                        __('Managed by GNOME Multitasking\'s Application Switching setting')}`;
+                        __('Managed by GNOME Multitasking\'s Application Switching setting.')}`;
                 }
             });
         this._appSwitcherSettings.bind('current-workspace-only',
@@ -732,7 +703,7 @@ var Settings = GObject.registerClass({
         isolateLocationsBindings.forEach(s => this._builder.get_object(s).connect(
             'notify::active', () => updateIsolateLocations()));
         this._settings.bind('dance-urgent-applications',
-            this._builder.get_object('dance_urgent_applications_switch'),
+            this._builder.get_object('wiggle_urgent_applications_switch'),
             'active',
             Gio.SettingsBindFlags.DEFAULT);
         this._settings.bind('hide-tooltip',
@@ -743,6 +714,32 @@ var Settings = GObject.registerClass({
             this._builder.get_object('show_icons_emblems_switch'),
             'active',
             Gio.SettingsBindFlags.DEFAULT);
+        const notificationsCounterCheck = this._builder.get_object(
+            'notifications_counter_check');
+        this._settings.bind('show-icons-notifications-counter',
+            notificationsCounterCheck,
+            'active',
+            Gio.SettingsBindFlags.DEFAULT);
+        this._settings.bind('show-icons-emblems',
+            notificationsCounterCheck,
+            'sensitive',
+            Gio.SettingsBindFlags.GET);
+
+        const applicationsOverrideCounter =
+            this._builder.get_object('applications_override_counter');
+        this._settings.bind('application-counter-overrides-notifications',
+            applicationsOverrideCounter,
+            'active',
+            Gio.SettingsBindFlags.DEFAULT);
+        notificationsCounterCheck.bind_property('active',
+            applicationsOverrideCounter, 'sensitive',
+            GObject.BindingFlags.SYNC_CREATE);
+        this._settings.connect('changed::show-icons-emblems', () => {
+            if (this._settings.get_boolean('show-icons-emblems'))
+                applicationsOverrideCounter.sensitive = notificationsCounterCheck.active;
+            else
+                applicationsOverrideCounter.sensitive = false;
+        });
         this._settings.bind('show-show-apps-button',
             this._builder.get_object('show_applications_button_switch'),
             'active',
@@ -761,6 +758,14 @@ var Settings = GObject.registerClass({
             Gio.SettingsBindFlags.DEFAULT);
         this._settings.bind('show-show-apps-button',
             this._builder.get_object('application_button_animation_button'),
+            'sensitive',
+            Gio.SettingsBindFlags.DEFAULT);
+        this._settings.bind('show-apps-always-in-the-edge',
+            this._builder.get_object('show_apps_always_in_the_edge'),
+            'active',
+            Gio.SettingsBindFlags.DEFAULT);
+        this._settings.bind('show-show-apps-button',
+            this._builder.get_object('show_apps_always_in_the_edge'),
             'sensitive',
             Gio.SettingsBindFlags.DEFAULT);
         this._settings.bind('scroll-to-focused-application',
@@ -1153,38 +1158,15 @@ var Settings = GObject.registerClass({
 
         // About Panel
 
-        if (Me)
-            this._builder.get_object('extension_version').set_label(Me.metadata.version.toString());
-        else
-            this._builder.get_object('extension_version').set_label('Unknown');
+        this._builder.get_object('extension_version').set_label(
+            `${this._extensionPreferences.metadata.version}`);
     }
 });
 
-/**
- *
- */
-function init() {
-    ExtensionUtils.initTranslations();
-}
-
-/**
- *
- */
-function buildPrefsWidget() {
-    const settings = new Settings();
-    const { widget } = settings;
-    return widget;
-}
-
-if (!Me) {
-    GLib.setenv('GSETTINGS_SCHEMA_DIR', './schemas', true);
-    Gtk.init();
-
-    const loop = GLib.MainLoop.new(null, false);
-    const win = new Gtk.Window();
-    win.set_child(buildPrefsWidget());
-    win.connect('close-request', () => loop.quit());
-    win.present();
-
-    loop.run();
+export default class DockPreferences extends ExtensionPreferences {
+    getPreferencesWidget() {
+        const settings = new DockSettings(this);
+        const {widget} = settings;
+        return widget;
+    }
 }

@@ -1,36 +1,33 @@
 // -*- mode: js; js-indent-level: 4; indent-tabs-mode: nil -*-
 
-/* exported DockDash */
-
-const {
+import {
     Clutter,
     Gio,
     GLib,
     GObject,
     Shell,
     St,
-} = imports.gi;
+} from './dependencies/gi.js';
 
-const {
-    appFavorites: AppFavorites,
-    dash: Dash,
-    dnd: DND,
-    main: Main,
-} = imports.ui;
+import {
+    AppFavorites,
+    Dash,
+    DND,
+    Main,
+} from './dependencies/shell/ui.js';
 
-const {
-    util: Util,
-} = imports.misc;
+import {
+    Util,
+} from './dependencies/shell/misc.js';
 
-const Me = imports.misc.extensionUtils.getCurrentExtension();
-const {
-    appIcons: AppIcons,
-    docking: Docking,
-    theming: Theming,
-    utils: Utils,
-} = Me.imports;
+import {
+    AppIcons,
+    Docking,
+    Theming,
+    Utils,
+} from './imports.js';
 
-const { DASH_ANIMATION_TIME } = Dash;
+const {DASH_ANIMATION_TIME} = Dash;
 const DASH_VISIBILITY_TIMEOUT = 3;
 
 const Labels = Object.freeze({
@@ -44,7 +41,7 @@ const Labels = Object.freeze({
  * - set label position based on dash orientation
  *
  */
-var DockDashItemContainer = GObject.registerClass(
+const DockDashItemContainer = GObject.registerClass(
 class DockDashItemContainer extends Dash.DashItemContainer {
     _init(position) {
         super._init();
@@ -91,7 +88,7 @@ const baseIconSizes = [16, 22, 24, 32, 48, 64, 96, 128];
  * - sync minimization application target position.
  * - keep running apps ordered.
  */
-var DockDash = GObject.registerClass({
+export const DockDash = GObject.registerClass({
     Properties: {
         'requires-visibility': GObject.ParamSpec.boolean(
             'requires-visibility', 'requires-visibility', 'requires-visibility',
@@ -106,12 +103,19 @@ var DockDash = GObject.registerClass({
 }, class DockDash extends St.Widget {
     _init(monitorIndex) {
         // Initialize icon variables and size
+        super._init({
+            name: 'dash',
+            offscreen_redirect: Clutter.OffscreenRedirect.ALWAYS,
+            layout_manager: new Clutter.BinLayout(),
+        });
+
         this._maxWidth = -1;
         this._maxHeight = -1;
         this.iconSize = Docking.DockManager.settings.dashMaxIconSize;
         this._availableIconSizes = baseIconSizes;
         this._shownInitially = false;
         this._initializeIconSize(this.iconSize);
+        this._signalsHandler = new Utils.GlobalSignalsHandler(this);
 
         this._separator = null;
 
@@ -126,12 +130,6 @@ var DockDash = GObject.registerClass({
         this._showLabelTimeoutId = 0;
         this._resetHoverTimeoutId = 0;
         this._labelShowing = false;
-
-        super._init({
-            name: 'dash',
-            offscreen_redirect: Clutter.OffscreenRedirect.ALWAYS,
-            layout_manager: new Clutter.BinLayout(),
-        });
 
         this._dashContainer = new St.BoxLayout({
             name: 'dashtodockDashContainer',
@@ -151,20 +149,19 @@ var DockDash = GObject.registerClass({
             enable_mouse_scrolling: false,
         });
 
-        if (Docking.DockManager.settings.dockExtended) {
-            if (!this._isHorizontal)
-                this._scrollView.y_align = Clutter.ActorAlign.START;
-            else
-                this._scrollView.x_align = Clutter.ActorAlign.START;
-        }
-
         this._scrollView.connect('scroll-event', this._onScrollEvent.bind(this));
+
+        this._boxContainer = new St.BoxLayout({
+            x_align: Clutter.ActorAlign.FILL,
+            y_align: Clutter.ActorAlign.FILL,
+            vertical: !this._isHorizontal,
+        });
 
         const rtl = Clutter.get_default_text_direction() === Clutter.TextDirection.RTL;
         this._box = new St.BoxLayout({
             vertical: !this._isHorizontal,
             clip_to_allocation: false,
-            ...!this._isHorizontal ? { layout_manager: new DockDashIconsVerticalLayout() } : {},
+            ...!this._isHorizontal ? {layout_manager: new DockDashIconsVerticalLayout()} : {},
             x_align: rtl ? Clutter.ActorAlign.END : Clutter.ActorAlign.START,
             y_align: this._isHorizontal ? Clutter.ActorAlign.CENTER : Clutter.ActorAlign.START,
             y_expand: !this._isHorizontal,
@@ -172,25 +169,25 @@ var DockDash = GObject.registerClass({
         });
         this._box._delegate = this;
         this._dashContainer.add_actor(this._scrollView);
-        this._scrollView.add_actor(this._box);
+        this._boxContainer.add_actor(this._box);
+        this._scrollView.add_actor(this._boxContainer);
 
         this._showAppsIcon = new AppIcons.DockShowAppsIcon(this._position);
         this._showAppsIcon.show(false);
         this._showAppsIcon.icon.setIconSize(this.iconSize);
         this._showAppsIcon.x_expand = false;
         this._showAppsIcon.y_expand = false;
+        this.showAppsButton.connect('notify::hover', a => {
+            if (this._showAppsIcon.get_parent() === this._boxContainer)
+                this._ensureItemVisibility(a);
+        });
         if (!this._isHorizontal)
             this._showAppsIcon.y_align = Clutter.ActorAlign.START;
         this._hookUpLabel(this._showAppsIcon);
         this._showAppsIcon.connect('menu-state-changed', (_icon, opened) => {
             this._itemMenuStateChanged(this._showAppsIcon, opened);
         });
-
-        if (Docking.DockManager.settings.showAppsAtTop)
-            this._dashContainer.insert_child_below(this._showAppsIcon, null);
-        else
-            this._dashContainer.insert_child_above(this._showAppsIcon, null);
-
+        this.updateShowAppsButton();
 
         this._background = new St.Widget({
             style_class: 'dash-background',
@@ -222,7 +219,6 @@ var DockDash = GObject.registerClass({
 
         this.iconAnimator = new Docking.IconAnimator(this);
 
-        this._signalsHandler = new Utils.GlobalSignalsHandler(this);
         this._signalsHandler.add([
             this._appSystem,
             'installed-changed',
@@ -537,7 +533,7 @@ var DockDash = GObject.registerClass({
         });
 
         appIcon.connect('notify::focused', () => {
-            const { settings } = Docking.DockManager;
+            const {settings} = Docking.DockManager;
             if (appIcon.focused && settings.scrollToFocusedApplication)
                 ensureActorVisibleInScrollView(this._scrollView, item);
         });
@@ -649,8 +645,8 @@ var DockDash = GObject.registerClass({
 
         const spacing = themeNode.get_length('spacing');
 
-        const [{ child: firstButton }] = iconChildren;
-        const { child: firstIcon } = firstButton?.icon ?? { child: null };
+        const [{child: firstButton}] = iconChildren;
+        const {child: firstIcon} = firstButton?.icon ?? {child: null};
 
         // if no icons there's nothing to adjust
         if (!firstIcon)
@@ -682,7 +678,7 @@ var DockDash = GObject.registerClass({
         }
 
         const maxIconSize = availSpace / iconChildren.length;
-        const { scaleFactor } = St.ThemeContext.get_for_stage(global.stage);
+        const {scaleFactor} = St.ThemeContext.get_for_stage(global.stage);
         const iconSizes = this._availableIconSizes.map(s => s * scaleFactor);
 
         let [newIconSize] = this._availableIconSizes;
@@ -700,7 +696,7 @@ var DockDash = GObject.registerClass({
 
         const scale = oldIconSize / newIconSize;
         for (let i = 0; i < iconChildren.length; i++) {
-            const { icon } = iconChildren[i].child._delegate;
+            const {icon} = iconChildren[i].child._delegate;
 
             // Set the new size immediately, to keep the icons' sizes
             // in sync with this.iconSize
@@ -730,7 +726,7 @@ var DockDash = GObject.registerClass({
 
         if (this._separator) {
             const animateProperties = this._isHorizontal
-                ? { height: this.iconSize } : { width: this.iconSize };
+                ? {height: this.iconSize} : {width: this.iconSize};
 
             this._separator.ease({
                 ...animateProperties,
@@ -745,7 +741,21 @@ var DockDash = GObject.registerClass({
 
         let running = this._appSystem.get_running();
         const dockManager = Docking.DockManager.getDefault();
-        const { settings } = dockManager;
+        const {settings} = dockManager;
+
+        this._scrollView.set({
+            xAlign: Clutter.ActorAlign.FILL,
+            yAlign: Clutter.ActorAlign.FILL,
+        });
+        if (dockManager.settings.dockExtended) {
+            if (!this._isHorizontal) {
+                this._scrollView.yAlign = dockManager.settings.alwaysCenterIcons
+                    ? Clutter.ActorAlign.CENTER : Clutter.ActorAlign.START;
+            } else {
+                this._scrollView.xAlign = dockManager.settings.alwaysCenterIcons
+                    ? Clutter.ActorAlign.CENTER : Clutter.ActorAlign.START;
+            }
+        }
 
         if (settings.isolateWorkspaces ||
             settings.isolateMonitors) {
@@ -766,7 +776,7 @@ var DockDash = GObject.registerClass({
         // Apps supposed to be in the dash
         const newApps = [];
 
-        const { showFavorites } = settings;
+        const {showFavorites} = settings;
         if (showFavorites)
             newApps.push(...Object.values(favorites));
 
@@ -811,6 +821,11 @@ var DockDash = GObject.registerClass({
             oldApps = oldApps.filter(app => !app.isTrash);
         }
 
+        // Temporary remove the separator so that we don't compute to position icons
+        const oldSeparatorPos = this._box.get_children().indexOf(this._separator);
+        if (this._separator)
+            this._box.remove_child(this._separator);
+
         // Figure out the actual changes to the list of items; we iterate
         // over both the list of items currently in the dash and the list
         // of items expected there, and collect additions and removals.
@@ -853,9 +868,11 @@ var DockDash = GObject.registerClass({
 
             // App added at newIndex
             if (newApp && !oldApps.includes(newApp)) {
-                addedItems.push({ app: newApp,
+                addedItems.push({
+                    app: newApp,
                     item: this._createAppItem(newApp),
-                    pos: newIndex });
+                    pos: newIndex,
+                });
                 newIndex++;
                 continue;
             }
@@ -871,9 +888,11 @@ var DockDash = GObject.registerClass({
 
             if (insertHere || alreadyRemoved) {
                 const newItem = this._createAppItem(newApp);
-                addedItems.push({ app: newApp,
+                addedItems.push({
+                    app: newApp,
                     item: newItem,
-                    pos: newIndex + removedActors.length });
+                    pos: newIndex + removedActors.length,
+                });
                 newIndex++;
             } else {
                 removedActors.push(children[oldIndex]);
@@ -897,20 +916,6 @@ var DockDash = GObject.registerClass({
                 item.destroy();
         }
 
-        this._adjustIconSize();
-
-        // Skip animations on first run when adding the initial set
-        // of items, to avoid all items zooming in at once
-
-        const animate = this._shownInitially &&
-            !Main.overview.animationInProgress;
-
-        if (!this._shownInitially)
-            this._shownInitially = true;
-
-        for (let i = 0; i < addedItems.length; i++)
-            addedItems[i].item.show(animate);
-
         // Update separator
         const nFavorites = Object.keys(favorites).length;
         const nIcons = children.length + addedItems.length - removedActors.length;
@@ -928,16 +933,30 @@ var DockDash = GObject.registerClass({
                     track_hover: true,
                 });
                 this._separator.connect('notify::hover', a => this._ensureItemVisibility(a));
-                this._box.add_child(this._separator);
             }
             let pos = nFavorites + this._animatingPlaceholdersCount;
             if (this._dragPlaceholder)
                 pos++;
-            this._box.set_child_at_index(this._separator, pos);
+            const removedFavorites = removedActors.filter(a =>
+                children.indexOf(a) < oldSeparatorPos);
+            pos += removedFavorites.length;
+            this._box.insert_child_at_index(this._separator, pos);
         } else if (this._separator) {
             this._separator.destroy();
             this._separator = null;
         }
+
+        this._adjustIconSize();
+
+        // Skip animations on first run when adding the initial set
+        // of items, to avoid all items zooming in at once
+        const animate = this._shownInitially &&
+            !Main.layoutManager._startingUp;
+
+        if (!this._shownInitially)
+            this._shownInitially = true;
+
+        addedItems.forEach(({item}) => item.show(animate));
 
         // Workaround for https://bugzilla.gnome.org/show_bug.cgi?id=692744
         // Without it, StBoxLayout may use a stale size cache
@@ -945,6 +964,8 @@ var DockDash = GObject.registerClass({
 
         // This will update the size, and the corresponding number for each icon
         this._updateNumberOverlay();
+
+        this.updateShowAppsButton();
     }
 
     _updateNumberOverlay() {
@@ -1021,6 +1042,7 @@ var DockDash = GObject.registerClass({
     showShowAppsButton() {
         this._showAppsIcon.visible = true;
         this._showAppsIcon.show(true);
+        this.updateShowAppsButton();
     }
 
     hideShowAppsButton() {
@@ -1038,16 +1060,30 @@ var DockDash = GObject.registerClass({
     }
 
     updateShowAppsButton() {
+        if (this._showAppsIcon.get_parent() && !this._showAppsIcon.visible)
+            return;
+
+        const {settings} = Docking.DockManager;
         const notifiedProperties = [];
+        const showAppsContainer = settings.showAppsAlwaysInTheEdge || !settings.dockExtended
+            ? this._dashContainer : this._boxContainer;
+
         this._signalsHandler.addWithLabel(Labels.FIRST_LAST_CHILD_WORKAROUND,
-            this._dashContainer, 'notify',
+            showAppsContainer, 'notify',
             (_obj, pspec) => notifiedProperties.push(pspec.name));
 
-        if (Docking.DockManager.settings.showAppsAtTop)
-            this._dashContainer.set_child_below_sibling(this._showAppsIcon, null);
-        else
-            this._dashContainer.set_child_above_sibling(this._showAppsIcon, null);
+        if (this._showAppsIcon.get_parent() !== showAppsContainer) {
+            this._showAppsIcon.get_parent()?.remove_child(this._showAppsIcon);
 
+            if (Docking.DockManager.settings.showAppsAtTop)
+                showAppsContainer.insert_child_below(this._showAppsIcon, null);
+            else
+                showAppsContainer.insert_child_above(this._showAppsIcon, null);
+        } else if (settings.showAppsAtTop) {
+            showAppsContainer.set_child_below_sibling(this._showAppsIcon, null);
+        } else {
+            showAppsContainer.set_child_above_sibling(this._showAppsIcon, null);
+        }
 
         this._signalsHandler.removeWithLabel(Labels.FIRST_LAST_CHILD_WORKAROUND);
 
@@ -1056,9 +1092,9 @@ var DockDash = GObject.registerClass({
         // mutter issue that is being fixed:
         // https://gitlab.gnome.org/GNOME/mutter/-/merge_requests/2047
         if (!notifiedProperties.includes('first-child'))
-            this._dashContainer.notify('first-child');
+            showAppsContainer.notify('first-child');
         if (!notifiedProperties.includes('last-child'))
-            this._dashContainer.notify('last-child');
+            showAppsContainer.notify('last-child');
     }
 });
 
@@ -1073,10 +1109,10 @@ var DockDash = GObject.registerClass({
  * @param actor
  */
 function ensureActorVisibleInScrollView(scrollView, actor) {
-    const { adjustment: vAdjustment } = scrollView.vscroll;
-    const { adjustment: hAdjustment } = scrollView.hscroll;
-    const { value: vValue0, pageSize: vPageSize, upper: vUpper } = vAdjustment;
-    const { value: hValue0, pageSize: hPageSize, upper: hUpper } = hAdjustment;
+    const {adjustment: vAdjustment} = scrollView.vscroll;
+    const {adjustment: hAdjustment} = scrollView.hscroll;
+    const {value: vValue0, pageSize: vPageSize, upper: vUpper} = vAdjustment;
+    const {value: hValue0, pageSize: hPageSize, upper: hUpper} = hAdjustment;
     let [hValue, vValue] = [hValue0, vValue0];
     let vOffset = 0;
     let hOffset = 0;
@@ -1087,7 +1123,7 @@ function ensureActorVisibleInScrollView(scrollView, actor) {
     }
 
     const box = actor.get_allocation_box();
-    let { y1 } = box, { y2 } = box, { x1 } = box, { x2 } = box;
+    let {y1} = box, {y2} = box, {x1} = box, {x2} = box;
 
     let parent = actor.get_parent();
     while (parent !== scrollView) {
