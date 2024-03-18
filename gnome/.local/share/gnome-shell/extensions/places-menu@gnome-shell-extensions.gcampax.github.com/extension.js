@@ -1,26 +1,34 @@
+// SPDX-FileCopyrightText: 2011 Vamsi Krishna Brahmajosyula <vamsikrishna.brahmajosyula@gmail.com>
+// SPDX-FileCopyrightText: 2011 Giovanni Campagna <gcampagna@src.gnome.org>
+// SPDX-FileCopyrightText: 2013 Florian Müllner <fmuellner@gnome.org>
+// SPDX-FileCopyrightText: 2016 Rémy Lefevre <lefevreremy@gmail.com>
+//
+// SPDX-License-Identifier: GPL-2.0-or-later
+
 /* -*- mode: js2; js2-basic-offset: 4; indent-tabs-mode: nil -*- */
-/* exported init enable disable */
+import Clutter from 'gi://Clutter';
+import GObject from 'gi://GObject';
+import St from 'gi://St';
 
-const { Clutter, GObject, St } = imports.gi;
+import {Extension, gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 
-const ExtensionUtils = imports.misc.extensionUtils;
-const Main = imports.ui.main;
-const PanelMenu = imports.ui.panelMenu;
-const PopupMenu = imports.ui.popupMenu;
+import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
+import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
-const Gettext = imports.gettext.domain('gnome-shell-extensions');
-const _ = Gettext.gettext;
+import {PlacesManager} from './placeDisplay.js';
+
 const N_ = x => x;
-
-const Me = ExtensionUtils.getCurrentExtension();
-const PlaceDisplay = Me.imports.placeDisplay;
 
 const PLACE_ICON_SIZE = 16;
 
-var PlaceMenuItem = GObject.registerClass(
 class PlaceMenuItem extends PopupMenu.PopupBaseMenuItem {
-    _init(info) {
-        super._init({
+    static {
+        GObject.registerClass(this);
+    }
+
+    constructor(info) {
+        super({
             style_class: 'place-menu-item',
         });
         this._info = info;
@@ -51,17 +59,8 @@ class PlaceMenuItem extends PopupMenu.PopupBaseMenuItem {
             this.add_child(this._ejectButton);
         }
 
-        this._changedId = info.connect('changed',
-            this._propertiesChanged.bind(this));
-    }
-
-    destroy() {
-        if (this._changedId) {
-            this._info.disconnect(this._changedId);
-            this._changedId = 0;
-        }
-
-        super.destroy();
+        info.connectObject('changed',
+            this._propertiesChanged.bind(this), this);
     }
 
     activate(event) {
@@ -74,7 +73,7 @@ class PlaceMenuItem extends PopupMenu.PopupBaseMenuItem {
         this._icon.gicon = info.icon;
         this._label.text = info.name;
     }
-});
+}
 
 const SECTIONS = [
     'special',
@@ -83,10 +82,13 @@ const SECTIONS = [
     'network',
 ];
 
-let PlacesMenu = GObject.registerClass(
 class PlacesMenu extends PanelMenu.Button {
-    _init() {
-        super._init(0.0, _('Places'));
+    static {
+        GObject.registerClass(this);
+    }
+
+    constructor() {
+        super(0.5, _('Places'));
 
         let label = new St.Label({
             text: _('Places'),
@@ -95,7 +97,7 @@ class PlacesMenu extends PanelMenu.Button {
         });
         this.add_actor(label);
 
-        this.placesManager = new PlaceDisplay.PlacesManager();
+        this.placesManager = new PlacesManager();
 
         this._sections = { };
 
@@ -131,23 +133,20 @@ class PlacesMenu extends PanelMenu.Button {
 
         this._sections[id].actor.visible = places.length > 0;
     }
-});
-
-function init() {
-    ExtensionUtils.initTranslations();
 }
 
-let _indicator;
+export default class PlacesMenuExtension extends Extension {
+    enable() {
+        this._indicator = new PlacesMenu();
 
-function enable() {
-    _indicator = new PlacesMenu();
+        let pos = Main.sessionMode.panel.left.length;
+        if ('apps-menu' in Main.panel.statusArea)
+            pos++;
+        Main.panel.addToStatusArea('places-menu', this._indicator, pos, 'left');
+    }
 
-    let pos = Main.sessionMode.panel.left.indexOf('appMenu');
-    if ('apps-menu' in Main.panel.statusArea)
-        pos++;
-    Main.panel.addToStatusArea('places-menu', _indicator, pos, 'left');
-}
-
-function disable() {
-    _indicator.destroy();
+    disable() {
+        this._indicator.destroy();
+        delete this._indicator;
+    }
 }

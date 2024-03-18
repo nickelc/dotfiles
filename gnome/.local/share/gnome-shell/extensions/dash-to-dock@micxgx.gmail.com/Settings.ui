@@ -78,7 +78,9 @@
                           <item translatable="yes">Show window previews</item>
                           <item translatable="yes">Minimize or show previews</item>
                           <item translatable="yes">Focus or show previews</item>
+                          <item translatable="yes">Focus or app spread</item>
                           <item translatable="yes">Focus, minimize or show previews</item>
+                          <item translatable="yes">Focus, minimize or app spread</item>
                           <item translatable="yes">Quit</item>
                         </items>
                         <layout>
@@ -148,7 +150,9 @@
                           <item translatable="yes">Show window previews</item>
                           <item translatable="yes">Minimize or show previews</item>
                           <item translatable="yes">Focus or show previews</item>
+                          <item translatable="yes">Focus or app spread</item>
                           <item translatable="yes">Focus, minimize or show previews</item>
+                          <item translatable="yes">Focus, minimize or app spread</item>
                           <item translatable="yes">Quit</item>
                         </items>
                         <layout>
@@ -218,7 +222,9 @@
                           <item translatable="yes">Show window previews</item>
                           <item translatable="yes">Minimize or show previews</item>
                           <item translatable="yes">Focus or show previews</item>
+                          <item translatable="yes">Focus or app spread</item>
                           <item translatable="yes">Focus, minimize or show previews</item>
+                          <item translatable="yes">Focus, minimize or app spread</item>
                           <item translatable="yes">Quit</item>
                         </items>
                         <layout>
@@ -305,6 +311,11 @@
                             <property name="valign">center</property>
                           </object>
                         </child>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkCheckButton" id="apply_gloss_effect_checkbutton">
+                        <property name="label" translatable="yes">Apply glossy effect.</property>
                       </object>
                     </child>
                     <child>
@@ -509,7 +520,7 @@
                             </child>
                             <child>
                               <object class="GtkCheckButton" id="multi_monitor_button">
-                                <property name="label" translatable="yes">Show on all monitors.</property>
+                                <property name="label" translatable="yes">Show on all monitors</property>
                                 <property name="margin_top">12</property>
 
                                 <layout>
@@ -753,6 +764,16 @@
                                 </layout>
                               </object>
                             </child>
+                            <child>
+                              <object class="GtkCheckButton" id="dock_center_icons_check">
+                                <property name="label" translatable="yes">Place icons to the center</property>
+                                <layout>
+                                  <property name="column">0</property>
+                                  <property name="row">2</property>
+                                  <property name="column-span">2</property>
+                                </layout>
+                              </object>
+                            </child>
                           </object>
                         </property>
                       </object>
@@ -916,7 +937,7 @@
                                 <property name="can_focus">0</property>
                                 <property name="hexpand">1</property>
                                 <property name="halign">start</property>
-                                <property name="label" translatable="yes">Show favorite applications</property>
+                                <property name="label" translatable="yes">Show pinned applications</property>
 
                                 <layout>
                                   <property name="column">0</property>
@@ -963,7 +984,7 @@
                             </child>
                             <child>
                               <object class="GtkCheckButton" id="application_button_isolation_button">
-                                <property name="label" translatable="yes">Isolate workspaces.</property>
+                                <property name="label" translatable="yes">Isolate workspaces</property>
                                 <property name="halign">start</property>
                                 <property name="margin_top">12</property>
 
@@ -975,8 +996,8 @@
                               </object>
                             </child>
                             <child>
-                              <object class="GtkCheckButton" id="application_button_monitor_isolation_button">
-                                <property name="label" translatable="yes">Isolate monitors.</property>
+                              <object class="GtkCheckButton" id="application_button_urgent_button">
+                                <property name="label" translatable="yes">Show urgent windows despite current workspace</property>
                                 <property name="halign">start</property>
                                 <property name="margin_top">12</property>
 
@@ -988,9 +1009,22 @@
                               </object>
                             </child>
                             <child>
+                              <object class="GtkCheckButton" id="application_button_monitor_isolation_button">
+                                <property name="label" translatable="yes">Isolate monitors</property>
+                                <property name="halign">start</property>
+                                <property name="margin_top">12</property>
+
+                                <layout>
+                                  <property name="column">0</property>
+                                  <property name="row">4</property>
+                                  <property name="column-span">2</property>
+                                </layout>
+                              </object>
+                            </child>
+                            <child>
                               <object class="GtkCheckButton" id="windows_preview_button">
                                 <property name="margin_top">3</property>
-                                <property name="label" translatable="yes">Show open windows previews.</property>
+                                <property name="label" translatable="yes">Show open windows' previews</property>
                                 <layout>
                                   <property name="column">0</property>
                                   <property name="row">1</property>
@@ -1092,7 +1126,7 @@
                             </child>
                             <child>
                               <object class="GtkCheckButton" id="application_button_first_button">
-                                <property name="label" translatable="yes">Move the applications button at the beginning of the dock.</property>
+                                <property name="label" translatable="yes">Move at beginning of the dock</property>
                                 <property name="halign">start</property>
                                 <property name="margin_top">12</property>
 
@@ -1113,13 +1147,34 @@
                                   <object class="GtkLabel" id="label3">
                                     <property name="can_focus">0</property>
                                     <property name="halign">start</property>
-                                    <property name="label" translatable="yes">Animate &lt;i&gt;Show Applications&lt;/i&gt;.</property>
+                                    <property name="label" translatable="yes">Animate &lt;i&gt;Show Applications&lt;/i&gt;</property>
                                     <property name="use_markup">1</property>
                                   </object>
                                 </child>
                                 <layout>
                                   <property name="column">0</property>
                                   <property name="row">3</property>
+                                  <property name="column-span">2</property>
+                                </layout>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkCheckButton" id="show_apps_always_in_the_edge">
+                                <style>
+                                  <class name="text-button"/>
+                                </style>
+                                <property name="margin_top">3</property>
+                                <child>
+                                  <object class="GtkLabel">
+                                    <property name="can_focus">0</property>
+                                    <property name="halign">start</property>
+                                    <property name="label" translatable="yes">Put &lt;i&gt;Show Applications&lt;/i&gt; in a dock edge when using Panel mode</property>
+                                    <property name="use_markup">1</property>
+                                  </object>
+                                </child>
+                                <layout>
+                                  <property name="column">0</property>
+                                  <property name="row">4</property>
                                   <property name="column-span">2</property>
                                 </layout>
                               </object>
@@ -1190,11 +1245,37 @@
                                 <property name="can_focus">0</property>
                                 <property name="hexpand">1</property>
                                 <property name="halign">start</property>
-                                <property name="label" translatable="yes">Show mounted volumes and devices</property>
+                                <property name="label" translatable="yes">Show volumes and devices</property>
 
                                 <layout>
                                   <property name="column">0</property>
                                   <property name="row">0</property>
+                                </layout>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkCheckButton" id="show_only_mounted_devices_check">
+                                <property name="label" translatable="yes">Only if mounted</property>
+                                <property name="halign">start</property>
+                                <property name="margin_top">12</property>
+
+                                <layout>
+                                  <property name="column">0</property>
+                                  <property name="row">1</property>
+                                  <property name="column-span">1</property>
+                                </layout>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkCheckButton" id="show_network_volumes_check">
+                                <property name="label" translatable="yes">Include network volumes</property>
+                                <property name="halign">start</property>
+                                <property name="margin_top">12</property>
+
+                                <layout>
+                                  <property name="column">0</property>
+                                  <property name="row">2</property>
+                                  <property name="column-span">2</property>
                                 </layout>
                               </object>
                             </child>
@@ -1235,6 +1316,169 @@
                                 </layout>
                               </object>
                             </child>
+                          </object>
+                        </property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkListBoxRow" id="wiggle_urgent_applications_row">
+                        <property name="child">
+                          <object class="GtkGrid">
+                            <property name="can_focus">0</property>
+                            <property name="margin_start">12</property>
+                            <property name="margin_end">12</property>
+                            <property name="margin_top">12</property>
+                            <property name="margin_bottom">12</property>
+                            <property name="column_spacing">32</property>
+                            <child>
+                              <object class="GtkSwitch" id="wiggle_urgent_applications_switch">
+                                <property name="halign">end</property>
+                                <property name="valign">center</property>
+                                <layout>
+                                  <property name="column">1</property>
+                                  <property name="row">0</property>
+                                </layout>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkLabel">
+                                <property name="can_focus">0</property>
+                                <property name="hexpand">1</property>
+                                <property name="halign">start</property>
+                                <property name="label" translatable="yes">Wiggle urgent applications</property>
+
+                                <layout>
+                                  <property name="column">0</property>
+                                  <property name="row">0</property>
+                                </layout>
+                              </object>
+                            </child>
+                          </object>
+                        </property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkListBoxRow" id="hide_tooltip_row">
+                        <property name="child">
+                          <object class="GtkGrid">
+                            <property name="can_focus">0</property>
+                            <property name="margin_start">12</property>
+                            <property name="margin_end">12</property>
+                            <property name="margin_top">12</property>
+                            <property name="margin_bottom">12</property>
+                            <property name="column_spacing">32</property>
+                            <child>
+                              <object class="GtkSwitch" id="hide_tooltip_switch">
+                                <property name="halign">end</property>
+                                <property name="valign">center</property>
+                                <layout>
+                                  <property name="column">1</property>
+                                  <property name="row">0</property>
+                                </layout>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkLabel">
+                                <property name="can_focus">0</property>
+                                <property name="hexpand">1</property>
+                                <property name="halign">start</property>
+                                <property name="label" translatable="yes">Hide application tooltip</property>
+
+                                <layout>
+                                  <property name="column">0</property>
+                                  <property name="row">0</property>
+                                </layout>
+                              </object>
+                            </child>
+                          </object>
+                        </property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkListBoxRow">
+                        <property name="child">
+                          <object class="GtkGrid">
+                            <property name="can_focus">0</property>
+                            <property name="margin_start">12</property>
+                            <property name="margin_end">12</property>
+                            <property name="margin_top">12</property>
+                            <property name="margin_bottom">12</property>
+                            <property name="column_spacing">32</property>
+                            <child>
+                              <object class="GtkSwitch" id="show_icons_emblems_switch">
+                                <property name="halign">end</property>
+                                <property name="valign">center</property>
+                                <layout>
+                                  <property name="column">1</property>
+                                  <property name="row">0</property>
+                                </layout>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkLabel">
+                                <property name="can_focus">0</property>
+                                <property name="hexpand">1</property>
+                                <property name="halign">start</property>
+                                <property name="label" translatable="yes">Show icons emblems</property>
+
+                                <layout>
+                                  <property name="column">0</property>
+                                  <property name="row">0</property>
+                                </layout>
+                              </object>
+                            </child>
+
+                            <child>
+                              <object class="GtkLabel">
+                                <property name="can_focus">0</property>
+                                <property name="hexpand">1</property>
+                                <property name="label" translatable="yes">When enabled application icons will show notification counters and progress-bars (if Unity API is used).</property>
+                                <property name="wrap">1</property>
+                                <property name="xalign">0</property>
+                                <style>
+                                  <class name="dim-label"/>
+                                </style>
+                                <layout>
+                                  <property name="column">0</property>
+                                  <property name="row">1</property>
+                                </layout>
+                              </object>
+                            </child>
+
+                            <child>
+                              <object class="GtkCheckButton" id="notifications_counter_check">
+                                <property name="label" translatable="yes">Show the number of unread notifications</property>
+                                <property name="halign">start</property>
+                                <property name="margin_top">12</property>
+
+                                <layout>
+                                  <property name="column">0</property>
+                                  <property name="row">2</property>
+                                  <property name="column-span">2</property>
+                                </layout>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkCheckButton" id="applications_override_counter">
+                                <style>
+                                  <class name="text-button"/>
+                                </style>
+                                <property name="margin_top">3</property>
+                                <child>
+                                  <object class="GtkLabel">
+                                    <property name="can_focus">0</property>
+                                    <property name="halign">start</property>
+                                    <property name="label" translatable="yes">Application-provided counter overrides the notifications counter</property>
+                                  </object>
+                                </child>
+                                <layout>
+                                  <property name="column">0</property>
+                                  <property name="row">3</property>
+                                  <property name="column-span">2</property>
+                                </layout>
+                              </object>
+                            </child>
+
                           </object>
                         </property>
                       </object>
@@ -1445,7 +1689,9 @@
                                       <item translatable="yes">Show window previews</item>
                                       <item translatable="yes">Minimize or show previews</item>
                                       <item translatable="yes">Focus or show previews</item>
+                                      <item translatable="yes">Focus or app spread</item>
                                       <item translatable="yes">Focus, minimize or show previews</item>
+                                      <item translatable="yes">Focus, minimize or app spread</item>
                                     </items>
                                   </object>
                                 </child>
@@ -1580,77 +1826,6 @@
                   <object class="GtkListBox" id="listbox1">
                     <property name="selection_mode">none</property>
                     <child>
-                      <object class="GtkListBoxRow" id="listboxrow1">
-                        <property name="child">
-                          <object class="GtkGrid" id="buitin_theme">
-                            <property name="can_focus">0</property>
-                            <property name="margin_start">12</property>
-                            <property name="margin_end">12</property>
-                            <property name="margin_top">12</property>
-                            <property name="margin_bottom">12</property>
-                            <property name="column_spacing">32</property>
-                            <child>
-                              <object class="GtkLabel" id="builtin_theme_description">
-                                <property name="can_focus">0</property>
-                                <property name="hexpand">1</property>
-                                <property name="halign">start</property>
-                                <property name="label" translatable="yes">Few customizations meant to integrate the dock with the default GNOME theme. Alternatively, specific options can be enabled below.</property>
-                                <property name="wrap">1</property>
-                                <property name="xalign">0</property>
-
-                                <style>
-                                  <class name="dim-label"/>
-                                </style>
-                                <layout>
-                                  <property name="column">0</property>
-                                  <property name="row">1</property>
-                                </layout>
-                              </object>
-                            </child>
-                            <child>
-                              <object class="GtkLabel" id="builtin_theme_label">
-                                <property name="can_focus">0</property>
-                                <property name="hexpand">1</property>
-                                <property name="halign">start</property>
-                                <property name="label" translatable="yes">Use built-in theme</property>
-
-                                <layout>
-                                  <property name="column">0</property>
-                                  <property name="row">0</property>
-                                </layout>
-                              </object>
-                            </child>
-                            <child>
-                              <object class="GtkSwitch" id="builtin_theme_switch">
-                                <property name="halign">end</property>
-                                <property name="valign">center</property>
-                                <layout>
-                                  <property name="column">1</property>
-                                  <property name="row">0</property>
-                                  <property name="row-span">2</property>
-                                </layout>
-                              </object>
-                            </child>
-                          </object>
-                        </property>
-                      </object>
-                    </child>
-                  </object>
-                </property>
-                <child type="label_item">
-                  <placeholder/>
-                </child>
-              </object>
-            </child>
-            <child>
-              <object class="GtkFrame" id="customize_theme">
-                <property name="can_focus">0</property>
-
-                <property name="child">
-                  <object class="GtkListBox" id="listbox2">
-                    <property name="can_focus">0</property>
-                    <property name="selection_mode">none</property>
-                    <child>
                       <object class="GtkListBoxRow" id="listboxrow2">
                         <property name="child">
                           <object class="GtkGrid" id="shrink_dash">
@@ -1705,266 +1880,6 @@
                       </object>
                     </child>
                     <child>
-                      <object class="GtkListBoxRow" id="listboxrow3">
-                        <property name="child">
-                          <object class="GtkGrid" id="running_dots">
-                            <property name="can_focus">0</property>
-                            <property name="margin_start">12</property>
-                            <property name="margin_end">12</property>
-                            <property name="margin_top">12</property>
-                            <property name="margin_bottom">12</property>
-                            <property name="column_spacing">32</property>
-                            <child>
-                              <object class="GtkLabel" id="running_dots_label">
-                                <property name="can_focus">0</property>
-                                <property name="hexpand">1</property>
-                                <property name="halign">start</property>
-                                <property name="label" translatable="yes">Customize windows counter indicators</property>
-
-                                <layout>
-                                  <property name="column">0</property>
-                                  <property name="row">0</property>
-                                </layout>
-                              </object>
-                            </child>
-                            <child>
-                              <object class="GtkBox" id="box4">
-                                <property name="can_focus">0</property>
-                                <property name="spacing">6</property>
-                                <child>
-                                  <object class="GtkButton" id="running_indicators_advance_settings_button">
-                                    <property name="receives_default">1</property>
-                                    <property name="halign">center</property>
-                                    <property name="valign">center</property>
-
-                                    <child>
-                                      <object class="GtkImage" id="image1">
-                                        <property name="can_focus">0</property>
-                                        <property name="icon_name">emblem-system-symbolic</property>
-                                      </object>
-                                    </child>
-                                    <style>
-                                      <class name="circular"/>
-                                    </style>
-                                  </object>
-                                </child>
-                                <child>
-                                  <object class="GtkComboBoxText" id="running_indicators_combo">
-                                    <property name="can_focus">0</property>
-                                    <items>
-                                      <item translatable="yes">Default</item>
-                                      <item translatable="yes">Dots</item>
-                                      <item translatable="yes">Squares</item>
-                                      <item translatable="yes">Dashes</item>
-                                      <item translatable="yes">Segmented</item>
-                                      <item translatable="yes">Solid</item>
-                                      <item translatable="yes">Ciliora</item>
-                                      <item translatable="yes">Metro</item>
-                                    </items>
-                                  </object>
-                                </child>
-                                <layout>
-                                  <property name="column">1</property>
-                                  <property name="row">0</property>
-                                  <property name="row-span">2</property>
-                                </layout>
-                              </object>
-                            </child>
-                            <child>
-                              <placeholder/>
-                            </child>
-                          </object>
-                        </property>
-                      </object>
-                    </child>
-                    <child>
-                      <object class="GtkListBoxRow" id="custom_background_color_listboxrow">
-                        <property name="child">
-                          <object class="GtkGrid" id="custom_background_color_grid">
-                            <property name="can_focus">0</property>
-                            <property name="margin_start">12</property>
-                            <property name="margin_end">12</property>
-                            <property name="margin_top">12</property>
-                            <property name="margin_bottom">12</property>
-                            <property name="column_spacing">32</property>
-                            <child>
-                              <object class="GtkLabel" id="custom_background_color_description">
-                                <property name="can_focus">0</property>
-                                <property name="hexpand">1</property>
-                                <property name="halign">start</property>
-                                <property name="label" translatable="yes">Set the background color for the dash.</property>
-                                <property name="wrap">1</property>
-                                <property name="xalign">0</property>
-
-                                <style>
-                                  <class name="dim-label"/>
-                                </style>
-                                <layout>
-                                  <property name="column">0</property>
-                                  <property name="row">1</property>
-                                </layout>
-                              </object>
-                            </child>
-                            <child>
-                              <object class="GtkLabel" id="custom_background_color_label">
-                                <property name="can_focus">0</property>
-                                <property name="hexpand">1</property>
-                                <property name="halign">start</property>
-                                <property name="label" translatable="yes">Customize the dash color</property>
-
-                                <layout>
-                                  <property name="column">0</property>
-                                  <property name="row">0</property>
-                                </layout>
-                              </object>
-                            </child>
-                            <child>
-                              <object class="GtkBox" id="custom_background_color_box">
-                                <property name="can_focus">0</property>
-                                <property name="spacing">6</property>
-                                <child>
-                                  <object class="GtkColorButton" id="custom_background_color">
-                                    <property name="receives_default">1</property>
-                                    <property name="halign">center</property>
-                                    <property name="valign">center</property>
-
-                                  </object>
-                                </child>
-                                <child>
-                                  <object class="GtkSwitch" id="custom_background_color_switch">
-                                    <property name="halign">end</property>
-                                    <property name="valign">center</property>
-                                  </object>
-                                </child>
-                                <layout>
-                                  <property name="column">1</property>
-                                  <property name="row">0</property>
-                                  <property name="row-span">2</property>
-                                </layout>
-                              </object>
-                            </child>
-                          </object>
-                        </property>
-                      </object>
-                    </child>
-                    <child>
-                      <object class="GtkListBoxRow" id="listboxrow4">
-                        <property name="child">
-                          <object class="GtkBox" id="box2">
-                            <property name="can_focus">0</property>
-                            <property name="orientation">vertical</property>
-                            <child>
-                              <object class="GtkGrid" id="customize_opacity">
-                                <property name="can_focus">0</property>
-                                <property name="margin_start">12</property>
-                                <property name="margin_end">12</property>
-                                <property name="margin_top">12</property>
-                                <property name="margin_bottom">12</property>
-                                <property name="column_spacing">32</property>
-                                <child>
-                                  <object class="GtkLabel" id="customize_opacity_description">
-                                    <property name="can_focus">0</property>
-                                    <property name="hexpand">1</property>
-                                    <property name="halign">start</property>
-                                    <property name="label" translatable="yes">Tune the dash background opacity.</property>
-
-                                    <style>
-                                      <class name="dim-label"/>
-                                    </style>
-                                    <layout>
-                                      <property name="column">0</property>
-                                      <property name="row">1</property>
-                                    </layout>
-                                  </object>
-                                </child>
-                                <child>
-                                  <object class="GtkLabel" id="customize_opacity_label">
-                                    <property name="can_focus">0</property>
-                                    <property name="hexpand">1</property>
-                                    <property name="halign">start</property>
-                                    <property name="label" translatable="yes">Customize opacity</property>
-
-                                    <layout>
-                                      <property name="column">0</property>
-                                      <property name="row">0</property>
-                                    </layout>
-                                  </object>
-                                </child>
-                                <child>
-                                  <object class="GtkBox" id="customize_opacity_box">
-                                    <property name="can_focus">0</property>
-                                    <property name="spacing">6</property>
-                                    <child>
-                                      <object class="GtkButton" id="dynamic_opacity_button">
-                                        <property name="receives_default">1</property>
-                                        <property name="halign">center</property>
-                                        <property name="valign">center</property>
-                                        <child>
-                                          <object class="GtkImage" id="dynamic_opacity_image">
-                                            <property name="can_focus">0</property>
-                                            <property name="icon_name">emblem-system-symbolic</property>
-                                          </object>
-                                        </child>
-                                        <style>
-                                          <class name="circular"/>
-                                        </style>
-                                      </object>
-                                    </child>
-                                    <child>
-                                      <object class="GtkComboBoxText" id="customize_opacity_combo">
-                                        <property name="can_focus">0</property>
-                                        <property name="valign">center</property>
-                                        <items>
-                                          <item id="0" translatable="yes">Default</item>
-                                          <item id="1" translatable="yes">Fixed</item>
-                                          <item id="3" translatable="yes">Dynamic</item>
-                                        </items>
-                                      </object>
-                                    </child>
-                                    <layout>
-                                      <property name="column">1</property>
-                                      <property name="row">0</property>
-                                      <property name="row-span">2</property>
-                                    </layout>
-                                  </object>
-                                </child>
-                              </object>
-                            </child>
-                            <child>
-                              <object class="GtkBox" id="custom_opacity">
-                                <property name="can_focus">0</property>
-                                <property name="margin_start">12</property>
-                                <property name="margin_end">12</property>
-                                <property name="margin_top">12</property>
-                                <property name="margin_bottom">12</property>
-                                <property name="spacing">32</property>
-                                <child>
-                                  <object class="GtkLabel" id="custom_opacity_label">
-                                    <property name="can_focus">0</property>
-                                    <property name="label" translatable="yes">Opacity</property>
-                                  </object>
-                                </child>
-                                <child>
-                                  <object class="GtkScale" id="custom_opacity_scale">
-                                    <property name="hexpand">1</property>
-                                    <property name="draw-value">1</property>
-                                    <property name="adjustment">custom_opacity_adjustement</property>
-
-                                    <property name="restrict_to_fill_level">0</property>
-                                    <property name="fill_level">0</property>
-                                    <property name="round_digits">0</property>
-                                    <property name="digits">2</property>
-                                    <property name="value_pos">right</property>
-                                    <signal name="value-changed" handler="custom_opacity_scale_value_changed_cb" />
-                                  </object>
-                                </child>
-                              </object>
-                            </child>
-                          </object>
-                        </property>
-                      </object>
-                    </child>
-                    <child>
                       <object class="GtkListBoxRow" id="listboxrow_rnd_border">
                         <property name="width_request">100</property>
                         <property name="height_request">80</property>
@@ -1994,6 +1909,372 @@
                             </child>
                           </object>
                         </property>
+                      </object>
+                      <object class="GtkListBoxRow">
+                        <property name="width_request">100</property>
+                        <property name="height_request">80</property>
+                        <property name="child">
+                          <object class="GtkBox">
+                            <property name="can_focus">0</property>
+                            <property name="spacing">32</property>
+                            <property name="margin_start">12</property>
+                            <property name="margin_end">12</property>
+                            <property name="margin_top">12</property>
+                            <property name="margin_bottom">12</property>
+                            <child>
+                              <object class="GtkLabel">
+                                <property name="hexpand">1</property>
+                                <property name="can_focus">0</property>
+                                <property name="valign">center</property>
+                                <property name="halign">start</property>
+                                <property name="label" translatable="yes">Show overview on startup</property>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkSwitch" id="show_overview_on_startup_switch">
+                                <property name="valign">center</property>
+                                <property name="margin_start">3</property>
+                              </object>
+                            </child>
+                          </object>
+                        </property>
+                      </object>
+                    </child>
+                  </object>
+                </property>
+                <child type="label_item">
+                  <placeholder/>
+                </child>
+              </object>
+            </child>
+            <child>
+              <object class="GtkFrame">
+                <property name="can_focus">0</property>
+
+                <property name="child">
+                  <object class="GtkBox">
+                    <property name="orientation">vertical</property>
+                    <child>
+                      <object class="GtkListBoxRow">
+                        <property name="child">
+                          <object class="GtkGrid" id="buitin_theme">
+                            <property name="can_focus">0</property>
+                            <property name="margin_start">12</property>
+                            <property name="margin_end">12</property>
+                            <property name="margin_top">12</property>
+                            <property name="margin_bottom">12</property>
+                            <property name="column_spacing">32</property>
+                            <child>
+                              <object class="GtkLabel" id="builtin_theme_description">
+                                <property name="can_focus">0</property>
+                                <property name="hexpand">1</property>
+                                <property name="halign">start</property>
+                                <property name="label" translatable="yes">Few customizations meant to integrate the dock with the default GNOME theme. Alternatively, specific options can be enabled below.</property>
+                                <property name="wrap">1</property>
+                                <property name="xalign">0</property>
+
+                                <style>
+                                  <class name="dim-label"/>
+                                </style>
+                                <layout>
+                                  <property name="column">0</property>
+                                  <property name="row">1</property>
+                                </layout>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkLabel" id="builtin_theme_label">
+                                <property name="can_focus">0</property>
+                                <property name="hexpand">1</property>
+                                <property name="halign">start</property>
+                                <property name="label" translatable="yes">Use built-in theme</property>
+
+                                <layout>
+                                  <property name="column">0</property>
+                                  <property name="row">0</property>
+                                </layout>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkSwitch" id="builtin_theme_switch">
+                                <property name="halign">end</property>
+                                <property name="valign">center</property>
+                                <layout>
+                                  <property name="column">1</property>
+                                  <property name="row">0</property>
+                                  <property name="row-span">2</property>
+                                </layout>
+                              </object>
+                            </child>
+                          </object>
+                        </property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkListBox" id="customize_theme">
+                        <property name="can_focus">0</property>
+                        <property name="selection_mode">none</property>
+                        <child>
+                          <object class="GtkListBoxRow" id="listboxrow3">
+                            <property name="child">
+                              <object class="GtkGrid" id="running_dots">
+                                <property name="can_focus">0</property>
+                                <property name="margin_start">12</property>
+                                <property name="margin_end">12</property>
+                                <property name="margin_top">12</property>
+                                <property name="margin_bottom">12</property>
+                                <property name="column_spacing">32</property>
+                                <child>
+                                  <object class="GtkLabel" id="running_dots_label">
+                                    <property name="can_focus">0</property>
+                                    <property name="hexpand">1</property>
+                                    <property name="halign">start</property>
+                                    <property name="label" translatable="yes">Customize windows counter indicators</property>
+
+                                    <layout>
+                                      <property name="column">0</property>
+                                      <property name="row">0</property>
+                                    </layout>
+                                  </object>
+                                </child>
+                                <child>
+                                  <object class="GtkBox" id="box4">
+                                    <property name="can_focus">0</property>
+                                    <property name="spacing">6</property>
+                                    <child>
+                                      <object class="GtkButton" id="running_indicators_advance_settings_button">
+                                        <property name="receives_default">1</property>
+                                        <property name="halign">center</property>
+                                        <property name="valign">center</property>
+
+                                        <child>
+                                          <object class="GtkImage" id="image1">
+                                            <property name="can_focus">0</property>
+                                            <property name="icon_name">emblem-system-symbolic</property>
+                                          </object>
+                                        </child>
+                                        <style>
+                                          <class name="circular"/>
+                                        </style>
+                                      </object>
+                                    </child>
+                                    <child>
+                                      <object class="GtkComboBoxText" id="running_indicators_combo">
+                                        <property name="can_focus">0</property>
+                                        <items>
+                                          <item translatable="yes">Default</item>
+                                          <item translatable="yes">Dots</item>
+                                          <item translatable="yes">Squares</item>
+                                          <item translatable="yes">Dashes</item>
+                                          <item translatable="yes">Segmented</item>
+                                          <item translatable="yes">Solid</item>
+                                          <item translatable="yes">Ciliora</item>
+                                          <item translatable="yes">Metro</item>
+                                          <item translatable="yes">Binary</item>
+                                        </items>
+                                      </object>
+                                    </child>
+                                    <layout>
+                                      <property name="column">1</property>
+                                      <property name="row">0</property>
+                                      <property name="row-span">2</property>
+                                    </layout>
+                                  </object>
+                                </child>
+                                <child>
+                                  <placeholder/>
+                                </child>
+                              </object>
+                            </property>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkListBoxRow" id="custom_background_color_listboxrow">
+                            <property name="child">
+                              <object class="GtkGrid" id="custom_background_color_grid">
+                                <property name="can_focus">0</property>
+                                <property name="margin_start">12</property>
+                                <property name="margin_end">12</property>
+                                <property name="margin_top">12</property>
+                                <property name="margin_bottom">12</property>
+                                <property name="column_spacing">32</property>
+                                <child>
+                                  <object class="GtkLabel" id="custom_background_color_description">
+                                    <property name="can_focus">0</property>
+                                    <property name="hexpand">1</property>
+                                    <property name="halign">start</property>
+                                    <property name="label" translatable="yes">Set the background color for the dash.</property>
+                                    <property name="wrap">1</property>
+                                    <property name="xalign">0</property>
+
+                                    <style>
+                                      <class name="dim-label"/>
+                                    </style>
+                                    <layout>
+                                      <property name="column">0</property>
+                                      <property name="row">1</property>
+                                    </layout>
+                                  </object>
+                                </child>
+                                <child>
+                                  <object class="GtkLabel" id="custom_background_color_label">
+                                    <property name="can_focus">0</property>
+                                    <property name="hexpand">1</property>
+                                    <property name="halign">start</property>
+                                    <property name="label" translatable="yes">Customize the dash color</property>
+
+                                    <layout>
+                                      <property name="column">0</property>
+                                      <property name="row">0</property>
+                                    </layout>
+                                  </object>
+                                </child>
+                                <child>
+                                  <object class="GtkBox" id="custom_background_color_box">
+                                    <property name="can_focus">0</property>
+                                    <property name="spacing">6</property>
+                                    <child>
+                                      <object class="GtkColorButton" id="custom_background_color">
+                                        <property name="receives_default">1</property>
+                                        <property name="halign">center</property>
+                                        <property name="valign">center</property>
+
+                                      </object>
+                                    </child>
+                                    <child>
+                                      <object class="GtkSwitch" id="custom_background_color_switch">
+                                        <property name="halign">end</property>
+                                        <property name="valign">center</property>
+                                      </object>
+                                    </child>
+                                    <layout>
+                                      <property name="column">1</property>
+                                      <property name="row">0</property>
+                                      <property name="row-span">2</property>
+                                    </layout>
+                                  </object>
+                                </child>
+                              </object>
+                            </property>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkListBoxRow" id="listboxrow4">
+                            <property name="child">
+                              <object class="GtkBox" id="box2">
+                                <property name="can_focus">0</property>
+                                <property name="orientation">vertical</property>
+                                <child>
+                                  <object class="GtkGrid" id="customize_opacity">
+                                    <property name="can_focus">0</property>
+                                    <property name="margin_start">12</property>
+                                    <property name="margin_end">12</property>
+                                    <property name="margin_top">12</property>
+                                    <property name="margin_bottom">12</property>
+                                    <property name="column_spacing">32</property>
+                                    <child>
+                                      <object class="GtkLabel" id="customize_opacity_description">
+                                        <property name="can_focus">0</property>
+                                        <property name="hexpand">1</property>
+                                        <property name="halign">start</property>
+                                        <property name="label" translatable="yes">Tune the dash background opacity.</property>
+
+                                        <style>
+                                          <class name="dim-label"/>
+                                        </style>
+                                        <layout>
+                                          <property name="column">0</property>
+                                          <property name="row">1</property>
+                                        </layout>
+                                      </object>
+                                    </child>
+                                    <child>
+                                      <object class="GtkLabel" id="customize_opacity_label">
+                                        <property name="can_focus">0</property>
+                                        <property name="hexpand">1</property>
+                                        <property name="halign">start</property>
+                                        <property name="label" translatable="yes">Customize opacity</property>
+
+                                        <layout>
+                                          <property name="column">0</property>
+                                          <property name="row">0</property>
+                                        </layout>
+                                      </object>
+                                    </child>
+                                    <child>
+                                      <object class="GtkBox" id="customize_opacity_box">
+                                        <property name="can_focus">0</property>
+                                        <property name="spacing">6</property>
+                                        <child>
+                                          <object class="GtkButton" id="dynamic_opacity_button">
+                                            <property name="receives_default">1</property>
+                                            <property name="halign">center</property>
+                                            <property name="valign">center</property>
+                                            <child>
+                                              <object class="GtkImage" id="dynamic_opacity_image">
+                                                <property name="can_focus">0</property>
+                                                <property name="icon_name">emblem-system-symbolic</property>
+                                              </object>
+                                            </child>
+                                            <style>
+                                              <class name="circular"/>
+                                            </style>
+                                          </object>
+                                        </child>
+                                        <child>
+                                          <object class="GtkComboBoxText" id="customize_opacity_combo">
+                                            <property name="can_focus">0</property>
+                                            <property name="valign">center</property>
+                                            <items>
+                                              <item id="0" translatable="yes">Default</item>
+                                              <item id="1" translatable="yes">Fixed</item>
+                                              <item id="3" translatable="yes">Dynamic</item>
+                                            </items>
+                                          </object>
+                                        </child>
+                                        <layout>
+                                          <property name="column">1</property>
+                                          <property name="row">0</property>
+                                          <property name="row-span">2</property>
+                                        </layout>
+                                      </object>
+                                    </child>
+                                  </object>
+                                </child>
+                                <child>
+                                  <object class="GtkBox" id="custom_opacity">
+                                    <property name="can_focus">0</property>
+                                    <property name="margin_start">12</property>
+                                    <property name="margin_end">12</property>
+                                    <property name="margin_top">12</property>
+                                    <property name="margin_bottom">12</property>
+                                    <property name="spacing">32</property>
+                                    <child>
+                                      <object class="GtkLabel" id="custom_opacity_label">
+                                        <property name="can_focus">0</property>
+                                        <property name="label" translatable="yes">Opacity</property>
+                                      </object>
+                                    </child>
+                                    <child>
+                                      <object class="GtkScale" id="custom_opacity_scale">
+                                        <property name="hexpand">1</property>
+                                        <property name="draw-value">1</property>
+                                        <property name="adjustment">custom_opacity_adjustement</property>
+
+                                        <property name="restrict_to_fill_level">0</property>
+                                        <property name="fill_level">0</property>
+                                        <property name="round_digits">0</property>
+                                        <property name="digits">2</property>
+                                        <property name="value_pos">right</property>
+                                        <signal name="value-changed" handler="custom_opacity_scale_value_changed_cb" />
+                                      </object>
+                                    </child>
+                                  </object>
+                                </child>
+                              </object>
+                            </property>
+                          </object>
+                        </child>
                       </object>
                     </child>
                   </object>
@@ -2589,6 +2870,18 @@ See the &lt;a href=&quot;https://www.gnu.org/licenses/old-licenses/gpl-2.0.html&
                         </layout>
                       </object>
                     </child>
+                    <child>
+                      <object class="GtkCheckButton" id="show_dock_urgent_notify_checkbutton">
+                        <property name="label" translatable="yes">Show dock for urgent notifications</property>
+                        <property name="margin_top">12</property>
+
+                        <layout>
+                          <property name="column">0</property>
+                          <property name="row">4</property>
+                          <property name="column-span">2</property>
+                        </layout>
+                      </object>
+                    </child>
                   </object>
                 </property>
               </object>
@@ -2668,6 +2961,13 @@ See the &lt;a href=&quot;https://www.gnu.org/licenses/old-licenses/gpl-2.0.html&
                             <property name="label" translatable="yes">Only maximized windows</property>
                             <property name="group">all_windows_radio_button</property>
                             <signal name="toggled" handler="maximized_windows_radio_button_toggled_cb" />
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkCheckButton" id="always_on_top_radio_button">
+                            <property name="label" translatable="yes">Always on top</property>
+                            <property name="group">all_windows_radio_button</property>
+                            <signal name="toggled" handler="always_on_top_radio_button_toggled_cb" />
                           </object>
                         </child>
                         <layout>
